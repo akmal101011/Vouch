@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
@@ -71,7 +74,7 @@ func testRapidFireAllowActions(results *TestResults) {
 
 	for i, call := range calls {
 		start := time.Now()
-		
+
 		req := map[string]interface{}{
 			"jsonrpc": "2.0",
 			"id":      i + 1,
@@ -81,10 +84,10 @@ func testRapidFireAllowActions(results *TestResults) {
 
 		resp, err := sendMCPRequest(req)
 		latency := time.Since(start)
-		
+
 		results.TotalCalls++
 		results.Latencies = append(results.Latencies, latency)
-		
+
 		if latency > results.MaxLatency {
 			results.MaxLatency = latency
 		}
@@ -120,7 +123,7 @@ func testRapidFireAllowActions(results *TestResults) {
 
 	log.Printf("\n   Average Latency: %v", results.AverageLatency)
 	log.Printf("   Max Latency: %v", results.MaxLatency)
-	
+
 	if results.AverageLatency < time.Millisecond {
 		log.Printf("   [PASS] Average latency < 1ms (Target achieved)")
 	} else {
@@ -130,7 +133,7 @@ func testRapidFireAllowActions(results *TestResults) {
 
 func testAsyncTaskFlow(results *TestResults) {
 	log.Println("   Step 1: Start long-running task...")
-	
+
 	// Start task
 	req1 := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -144,7 +147,7 @@ func testAsyncTaskFlow(results *TestResults) {
 
 	resp1, err := sendMCPRequest(req1)
 	results.TotalCalls++
-	
+
 	if err != nil {
 		log.Printf("   [FAIL] Failed to start task: %v", err)
 		results.FailedCalls++
@@ -156,13 +159,13 @@ func testAsyncTaskFlow(results *TestResults) {
 	result := resp1["result"].(map[string]interface{})
 	taskID := result["task_id"].(string)
 	state := result["state"].(string)
-	
+
 	log.Printf("   [OK] Task created: ID=%s, State=%s", taskID, state)
-	
+
 	// Poll task
 	time.Sleep(500 * time.Millisecond)
 	log.Println("   Step 2: Poll task status...")
-	
+
 	req2 := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      101,
@@ -174,7 +177,7 @@ func testAsyncTaskFlow(results *TestResults) {
 
 	resp2, err := sendMCPRequest(req2)
 	results.TotalCalls++
-	
+
 	if err != nil {
 		log.Printf("   [FAIL] Failed to poll task: %v", err)
 		results.FailedCalls++
@@ -184,7 +187,7 @@ func testAsyncTaskFlow(results *TestResults) {
 
 	result2 := resp2["result"].(map[string]interface{})
 	state2 := result2["state"].(string)
-	
+
 	log.Printf("   [OK] Task polled: ID=%s, State=%s", taskID, state2)
 	log.Printf("   [PASS] SEP-1686 async task flow working")
 }
@@ -192,7 +195,7 @@ func testAsyncTaskFlow(results *TestResults) {
 func testPolicyStall(results *TestResults) {
 	log.Println("   Triggering critical infrastructure call (aws:ec2:launch)...")
 	log.Println("   NOTE: This should trigger a STALL in the proxy")
-	
+
 	req := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      200,
@@ -206,9 +209,9 @@ func testPolicyStall(results *TestResults) {
 	start := time.Now()
 	resp, err := sendMCPRequest(req)
 	duration := time.Since(start)
-	
+
 	results.TotalCalls++
-	
+
 	if err != nil {
 		log.Printf("   [FAIL] Failed: %v", err)
 		results.FailedCalls++
@@ -217,7 +220,7 @@ func testPolicyStall(results *TestResults) {
 	results.SuccessfulCalls++
 
 	log.Printf("   [OK] Request completed after %v", duration)
-	
+
 	// If it took > 1 second, likely it was stalled
 	if duration > time.Second {
 		log.Printf("   [PASS] Stall detected (took %v, indicating manual approval)", duration)
@@ -233,7 +236,7 @@ func testPolicyStall(results *TestResults) {
 
 func testAsyncWorkerPersistence(results *TestResults) {
 	log.Println("   Sending request and closing connection immediately...")
-	
+
 	req := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      300,
@@ -248,7 +251,7 @@ func testAsyncWorkerPersistence(results *TestResults) {
 	sendMCPRequest(req)
 	results.TotalCalls++
 	results.SuccessfulCalls++
-	
+
 	log.Println("   [OK] Connection closed immediately")
 	log.Println("   [INFO] Check Vouch console logs to verify event was still logged")
 	log.Println("   [PASS] If you see the fs:write event in Vouch logs, async worker is working")
@@ -256,7 +259,7 @@ func testAsyncWorkerPersistence(results *TestResults) {
 
 func sendMCPRequest(req map[string]interface{}) (map[string]interface{}, error) {
 	body, _ := json.Marshal(req)
-	
+
 	resp, err := http.Post("http://localhost:9999", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
@@ -286,9 +289,9 @@ func printResults(results *TestResults) {
 	log.Printf("Average Latency:   %v", results.AverageLatency)
 	log.Printf("Max Latency:       %v", results.MaxLatency)
 	log.Printf("Stall Detected:    %v", results.StallDetected)
-	
+
 	log.Println("\nPHASE 1 VERIFICATION:")
-	
+
 	checks := []struct {
 		name   string
 		passed bool
@@ -296,7 +299,7 @@ func printResults(results *TestResults) {
 		{"Proxy forwards requests", results.SuccessfulCalls > 0},
 		{"Latency < 1ms (for allow actions)", results.AverageLatency < time.Millisecond},
 		{"Stall policy working", results.StallDetected},
-		{"SEP-1686 task tracking", true}, // Verified by logs
+		{"SEP-1686 task tracking", true},   // Verified by logs
 		{"Async worker persistence", true}, // Verified by logs
 	}
 

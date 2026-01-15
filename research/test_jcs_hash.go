@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
@@ -15,7 +18,7 @@ func main() {
 
 	// Test Case 1: Same data, different key order
 	log.Println("Test Case 1: Key Order Independence")
-	
+
 	payload1 := map[string]interface{}{
 		"a": 1,
 		"b": 2,
@@ -37,7 +40,7 @@ func main() {
 	// Serialize to JSON to show they're different strings
 	json1, _ := json.Marshal(payload1)
 	json2, _ := json.Marshal(payload2)
-	
+
 	log.Printf("   JSON 1: %s", string(json1))
 	log.Printf("   JSON 2: %s", string(json2))
 	log.Println()
@@ -62,7 +65,7 @@ func main() {
 
 	// Test Case 2: Different previous hash changes result
 	log.Println("\nTest Case 2: Hash Chain Dependency")
-	
+
 	payload := map[string]interface{}{
 		"method": "tools/call",
 		"params": map[string]interface{}{
@@ -85,7 +88,7 @@ func main() {
 
 	// Test Case 3: MCP Event Example
 	log.Println("\nTest Case 3: Real MCP Event Hash")
-	
+
 	mcpEvent := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      1,
@@ -109,7 +112,7 @@ func main() {
 
 	// Test Case 4: Unicode and special characters
 	log.Println("\nTest Case 4: Unicode Handling")
-	
+
 	unicodePayload1 := map[string]interface{}{
 		"emoji":   "🚀",
 		"chinese": "你好",
