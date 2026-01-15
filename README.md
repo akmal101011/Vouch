@@ -117,22 +117,6 @@ vouch-cli export --format json --output audit_trail.json
 
 ---
 
-## Architecture Deep-Dive
-
-### Cryptographic Chain Design
-Vouch uses RFC 8785 (JSON Canonicalization Scheme) to normalize payloads before hashing. This ensures that the hash remains identical regardless of key order, protecting against signature drift when logs are exported between different JSON libraries.
-
-### SEP-1686 Task State Protocol
-Vouch tracks agent lifecycle states (working -> stalled -> completed/failed). This allows you to group atomic tool actions into a single high-level Objective, making it easy to see exactly why an agent performed a specific action.
-
-### Stall Intelligence
-When a policy triggers a stall, Vouch doesn't just block; it captures the parent_id and task_id. This provides the human approver with the full stack trace of the agent's reasoning chain before they hit Approve.
-
-### PII Redaction
-The interceptor performs In-Flight Redaction. If a tool response contains sensitive tokens or emails, Vouch scrubs the data before it is signed and persisted to the local SQLite database.
-
----
-
 ## Performance
 Optimized for zero-impact on agent latency.
 - Latency Overhead: < 1.8ms per request (local loopback).
@@ -158,37 +142,6 @@ llm = ChatOpenAI(openai_api_base="http://localhost:9999/v1")
 
 ---
 
-## Use Cases
-- Financial Services: Trading bot oversight and compliance for automated fund transfers.
-- Infrastructure: Prevent hallucinating agents from accidentally deleting AWS/GCP clusters.
-- Healthcare: HIPAA-compliant audit trails for AI-assisted clinical diagnosis.
-- Threat Hunting: Incident response forensics—see exactly what a remediation agent changed.
-
----
-
-## Why Not Just Use Alternative?
-
-| Feature | Vouch | LangSmith / LangFuse | Standard Logs |
-| :--- | :--- | :--- | :--- |
-| **Tamper-Proof** | Yes (Crypto Chain) | No (Cloud-Managed) | No |
-| **Blocking Policy**| Yes (Human Stall) | No (Reactive only) | No |
-| **Air-Gap Capable** | Yes (Local DB) | No | Yes |
-| **Latency** | < 2ms | Network Dependent | Variable |
-
----
-
-## Common Questions
-
-**Q: Does this slow down my agent?**  
-A: No. By utilizing memory pooling (sync.Pool) and a decoupled async ledger worker, the overhead is typically less than 2ms—which is a rounding error for most LLM latencies.
-
-**Q: Can agents bypass this?**  
-A: No. Vouch acts as a transparent network gateway. If the agent wants to talk to a tool, it MUST pass through the proxy, which records the raw network bytes.
-
-**Q: What if the ledger fills up?**  
-A: Vouch supports periodic snapshots and Cold Storage export, allowing you to move signed ledger segments to long-term storage while maintaining the hash integrity.
-
----
 
 ## Roadmap
 - [ ] WebAssembly (Wasm) policy plugins
