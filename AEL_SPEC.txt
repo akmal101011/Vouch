@@ -52,26 +52,26 @@ TABLE: events (
 
 [5. IMPLEMENTATION ROADMAP]
 
-PHASE 1: THE INTERCEPTOR (Current)
-[ ] Goal: Build Go proxy that forwards traffic and logs to console.
-[ ] Task 1.1: Implement transparent HTTP/SSE proxy.
-[ ] Task 1.2: Parse JSON-RPC "method" and "params".
-[ ] Task 1.3: Track async tasks (MCP SEP-1686) with in-memory map.
-[ ] Task 1.4: Measure latency (Target: <1ms overhead).
+PHASE 1: THE INTERCEPTOR (Completed)
+[x] Goal: Build Go proxy that forwards traffic and logs to console.
+[x] Task 1.1: Implement transparent HTTP/SSE proxy.
+[x] Task 1.2: Parse JSON-RPC "method" and "params".
+[x] Task 1.3: Track async tasks (MCP SEP-1686) with in-memory map.
+[x] Task 1.4: Measure latency (Target: <1ms overhead).
 
-PHASE 2: THE IMMUTABLE VAULT
-[ ] Goal: Store tool calls in a cryptographic chain.
-[ ] Task 2.1: Initialize SQLite with WAL mode.
-[ ] Task 2.2: Create Genesis Event (Block 0) with public key + timestamp.
-[ ] Task 2.3: Implement Hash-Chaining (SHA-256 logic with canonical JSON).
-[ ] Task 2.4: Implement Ed25519 signing per event.
+PHASE 2: THE IMMUTABLE VAULT (Completed)
+[x] Goal: Store tool calls in a cryptographic chain.
+[x] Task 2.1: Initialize SQLite with WAL mode.
+[x] Task 2.2: Create Genesis Event (Block 0) with public key + timestamp.
+[x] Task 2.3: Implement Hash-Chaining (SHA-256 logic with canonical JSON).
+[x] Task 2.4: Implement Ed25519 signing per event.
 
 PHASE 3: THE POLICY GUARD
-[ ] Goal: Add human-approval for dangerous actions.
-[ ] Task 3.1: Parse `ael-policy.yaml`.
-[ ] Task 3.2: Implement "Stall" logic for protected methods.
-[ ] Task 3.3: Log "Blocked Action" events (Article 12 compliance).
-[ ] Task 3.4: Build CLI command `ael approve <id>`.
+[x] Goal: Add human-approval for dangerous actions.
+[x] Task 3.1: Parse `ael-policy.yaml`.
+[x] Task 3.2: Implement "Stall" logic for protected methods.
+[x] Task 3.3: Log "Blocked Action" events (Article 12 compliance).
+[x] Task 3.4: Build CLI command `ael approve <id>`.
 
 PHASE 4: FORENSICS & REPORTING
 [ ] Goal: Verify and export agent behavior reports.
