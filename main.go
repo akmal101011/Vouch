@@ -123,12 +123,10 @@ func main() {
 
 // interceptRequest intercepts and analyzes incoming requests
 func (v *VouchProxy) interceptRequest(req *http.Request) {
-	// Only intercept POST requests (MCP uses JSON-RPC over HTTP POST)
 	if req.Method != http.MethodPost {
 		return
 	}
 
-	// Read body
 	bodyBytes, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Failed to read request body: %v", err)
@@ -136,103 +134,141 @@ func (v *VouchProxy) interceptRequest(req *http.Request) {
 	}
 	req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-	// Try to parse as MCP request
-	var mcpReq MCPRequest
-	if err := json.Unmarshal(bodyBytes, &mcpReq); err != nil {
-		// Not a JSON-RPC request, skip
+	// 1. Extract Metadata
+	mcpReq, taskID, taskState, err := v.extractTaskMetadata(bodyBytes)
+	if err != nil {
+		v.sendErrorResponse(req, http.StatusBadRequest, -32000, err.Error())
 		return
 	}
 
-	// Safety Assertions (Rule 5 compliance)
-	if err := assert.Check(len(bodyBytes) < 5*1024*1024, "request body too large", "size", len(bodyBytes)); err != nil {
-		v.sendErrorResponse(req, http.StatusBadRequest, -32000, "Request Payload Too Large")
-		return
-	}
-
-	if err := assert.Check(mcpReq.Method != "", "method must not be empty"); err != nil {
-		v.sendErrorResponse(req, http.StatusBadRequest, -32000, "Invalid Method")
-		return
-	}
-
-	// Health Sentinel: Check if ledger is healthy
+	// 2. Health Check
 	if !v.worker.IsHealthy() {
-		log.Printf("[CRITICAL] Rejecting request: Ledger Unhealthy")
-		v.sendErrorResponse(req, http.StatusServiceUnavailable, -32000, "Ledger Storage Failure: Security Chain Compromised")
+		v.sendErrorResponse(req, http.StatusServiceUnavailable, -32000, "Ledger Storage Failure")
 		return
 	}
 
-	// Extract task_id if present (SEP-1686)
-	var taskID string
-	var taskState string
-	if params, ok := mcpReq.Params["task_id"].(string); ok {
-		taskID = params
-		taskState = "working" // Default state
+	// 3. Policy Evaluation
+	shouldStall, matchedRule, err := v.evaluatePolicy(mcpReq.Method, mcpReq.Params)
+	if err != nil {
+		v.sendErrorResponse(req, http.StatusBadRequest, -32000, "Policy violation")
+		return
+	}
 
-		// Safety Assertion: Verify task_id length
-		if err := assert.Check(len(taskID) <= 64, "task_id exceeds reasonable length", "task_id", taskID); err != nil {
-			v.sendErrorResponse(req, http.StatusBadRequest, -32000, "Invalid Task ID")
+	// 4. Handle Stall (Human-in-the-loop)
+	if shouldStall {
+		if err := v.handleStall(taskID, taskState, mcpReq, matchedRule); err != nil {
+			v.sendErrorResponse(req, http.StatusForbidden, -32000, "Stall rejected or failed")
 			return
 		}
 	}
 
-	// Check if method should be stalled (Policy Guard)
-	shouldStall, matchedRule := v.shouldStallMethod(mcpReq.Method, mcpReq.Params)
+	// 5. Finalize Event & Submit
+	v.submitToolCallEvent(taskID, taskState, mcpReq, matchedRule)
+}
 
-	if shouldStall {
-		// Create event ID
-		eventID := uuid.New().String()[:8]
-
-		// Log the stall
-		log.Printf("STALL DETECTED")
-		log.Printf("Method: %s", mcpReq.Method)
-		log.Printf("Policy: %s (Risk: %s)", matchedRule.ID, matchedRule.RiskLevel)
-		log.Printf("Event ID: %s", eventID)
-
-		// Create blocked event
-		event := proxy.Event{
-			ID:         eventID,
-			Timestamp:  time.Now(),
-			EventType:  "blocked",
-			Method:     mcpReq.Method,
-			Params:     mcpReq.Params,
-			TaskID:     taskID,
-			TaskState:  taskState,
-			PolicyID:   matchedRule.ID,
-			RiskLevel:  matchedRule.RiskLevel,
-			WasBlocked: true,
-		}
-		v.worker.Submit(event)
-
-		// Create approval channel
-		approvalChan := make(chan bool, 1)
-		v.stallSignals.Store(eventID, approvalChan)
-
-		// Stall Intelligence: Check for previous failures in this task
-		if taskID != "" {
-			failCount, err := v.worker.GetDB().GetTaskFailureCount(taskID)
-			if err == nil && failCount > 0 {
-				log.Printf("⚠️ STALL INTELLIGENCE WARNING: Task %s has failed %d times in previous events.", taskID, failCount)
-			}
-		}
-
-		log.Printf("Waiting for approval... (Type 'vouch approve %s' or press Enter to continue)", eventID)
-
-		// For demo purposes, we'll wait for a simple stdin signal
-		// In production, this would be handled by the CLI tool
-		go func() {
-			var input string
-			_, _ = fmt.Scanln(&input)
-			if _, ok := v.stallSignals.Load(eventID); ok {
-				approvalChan <- true
-			}
-		}()
-
-		// Wait for approval
-		<-approvalChan
-		log.Printf("Event %s approved, continuing...", eventID)
+// extractTaskMetadata parses and validates the request
+func (v *VouchProxy) extractTaskMetadata(body []byte) (*MCPRequest, string, string, error) {
+	if err := assert.Check(len(body) > 0, "request body is empty"); err != nil {
+		return nil, "", "", err
+	}
+	if err := assert.Check(len(body) < 5*1024*1024, "request body too large", "size", len(body)); err != nil {
+		return nil, "", "", err
 	}
 
-	// Create event
+	var mcpReq MCPRequest
+	if err := json.Unmarshal(body, &mcpReq); err != nil {
+		return nil, "", "", fmt.Errorf("invalid JSON-RPC: %w", err)
+	}
+
+	if err := assert.Check(mcpReq.Method != "", "method must not be empty"); err != nil {
+		return nil, "", "", err
+	}
+
+	taskID, _ := mcpReq.Params["task_id"].(string)
+	taskState := "working"
+
+	if taskID != "" {
+		if err := assert.Check(len(taskID) <= 64, "task_id too long", "id", taskID); err != nil {
+			return nil, "", "", err
+		}
+	}
+
+	return &mcpReq, taskID, taskState, nil
+}
+
+// evaluatePolicy determines the action for the request
+func (v *VouchProxy) evaluatePolicy(method string, params map[string]interface{}) (bool, *proxy.PolicyRule, error) {
+	if err := assert.Check(method != "", "method name required"); err != nil {
+		return false, nil, err
+	}
+	if err := assert.Check(v.policy != nil, "policy configuration missing"); err != nil {
+		return false, nil, err
+	}
+
+	shouldStall, matchedRule := v.shouldStallMethod(method, params)
+	return shouldStall, matchedRule, nil
+}
+
+// handleStall manages the approval workflow
+func (v *VouchProxy) handleStall(taskID, taskState string, mcpReq *MCPRequest, matchedRule *proxy.PolicyRule) error {
+	if err := assert.Check(mcpReq != nil, "mcpReq must not be nil"); err != nil {
+		return err
+	}
+	if err := assert.Check(matchedRule != nil, "matchedRule must not be nil"); err != nil {
+		return err
+	}
+
+	eventID := uuid.New().String()[:8]
+	log.Printf("[STALL] Method: %s | Policy: %s | ID: %s", mcpReq.Method, matchedRule.ID, eventID)
+
+	event := proxy.Event{
+		ID:         eventID,
+		Timestamp:  time.Now(),
+		EventType:  "blocked",
+		Method:     mcpReq.Method,
+		Params:     mcpReq.Params,
+		TaskID:     taskID,
+		TaskState:  taskState,
+		PolicyID:   matchedRule.ID,
+		RiskLevel:  matchedRule.RiskLevel,
+		WasBlocked: true,
+	}
+	v.worker.Submit(event)
+
+	approvalChan := make(chan bool, 1)
+	v.stallSignals.Store(eventID, approvalChan)
+
+	// Stall Intelligence
+	if taskID != "" {
+		failCount, _ := v.worker.GetDB().GetTaskFailureCount(taskID)
+		if failCount > 0 {
+			log.Printf("⚠️ STALL WARNING: Task %s has failed %d times.", taskID, failCount)
+		}
+	}
+
+	log.Printf("Waiting for approval (ID: %s)...", eventID)
+
+	// Demo signal (stdin or CLI)
+	go func() {
+		var input string
+		fmt.Scanln(&input)
+		if _, ok := v.stallSignals.Load(eventID); ok {
+			approvalChan <- true
+		}
+	}()
+
+	if !<-approvalChan {
+		return fmt.Errorf("stall rejected")
+	}
+
+	return nil
+}
+
+// submitToolCallEvent prepares and sends the tool_call event to the ledger
+func (v *VouchProxy) submitToolCallEvent(taskID, taskState string, mcpReq *MCPRequest, matchedRule *proxy.PolicyRule) {
+	_ = assert.Check(mcpReq != nil, "mcpReq must not be nil")
+	_ = assert.Check(v.worker != nil, "worker must not be nil")
+
 	event := proxy.Event{
 		ID:        uuid.New().String()[:8],
 		Timestamp: time.Now(),
@@ -243,32 +279,32 @@ func (v *VouchProxy) interceptRequest(req *http.Request) {
 		TaskState: taskState,
 	}
 
-	// If a rule matched but didn't stall, we still want the metadata
 	if matchedRule != nil {
 		event.PolicyID = matchedRule.ID
 		event.RiskLevel = matchedRule.RiskLevel
-
-		// Apply redaction if policy specifies it
 		if len(matchedRule.Redact) > 0 {
-			event.Params = redactParams(mcpReq.Params, matchedRule.Redact)
+			event.Params = v.redactSensitiveData(mcpReq.Params, matchedRule.Redact)
 		}
 	}
 
-	// Hierarchy tracking: if this task has a previous event, link it
+	// Hierarchy link
 	if taskID != "" {
 		if parentID, ok := v.lastEventByTask.Load(taskID); ok {
 			event.ParentID = parentID.(string)
 		}
 		v.lastEventByTask.Store(taskID, event.ID)
-	}
-
-	// Track task if present
-	if taskID != "" {
 		v.activeTasks.Store(taskID, taskState)
 	}
 
-	// Send to async worker
 	v.worker.Submit(event)
+}
+
+// redactSensitiveData scrubs PII based on policy
+func (v *VouchProxy) redactSensitiveData(params map[string]interface{}, keys []string) map[string]interface{} {
+	_ = assert.Check(params != nil, "params must not be nil")
+	_ = assert.Check(len(keys) > 0, "redaction keys must not be empty")
+
+	return redactParams(params, keys)
 }
 
 // interceptResponse intercepts and analyzes responses
