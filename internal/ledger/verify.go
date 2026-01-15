@@ -34,7 +34,7 @@ func VerifyChain(db *DB, runID string, signer *crypto.Signer) (*VerificationResu
 
 	// Get all events for this run, ordered by sequence
 	events, err := db.GetAllEvents(runID)
-	if err != nil {
+	if err := assert.Check(err == nil, "database query failed", "err", err); err != nil {
 		return nil, fmt.Errorf("failed to get events: %w", err)
 	}
 
@@ -110,7 +110,8 @@ func VerifyEvent(event *proxy.Event, signer *crypto.Signer) error {
 	}
 
 	// Verify signature
-	if !signer.VerifySignature(calculatedHash, event.Signature) {
+	isValid := signer.VerifySignature(calculatedHash, event.Signature)
+	if err := assert.Check(isValid, "signature verification failed", "id", event.ID, "hash", calculatedHash); err != nil {
 		return fmt.Errorf("signature verification failed")
 	}
 

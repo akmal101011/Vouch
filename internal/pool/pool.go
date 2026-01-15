@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/yourname/vouch/internal/assert"
 	"github.com/yourname/vouch/internal/proxy"
 )
 
@@ -39,6 +40,9 @@ var eventPool = sync.Pool{
 
 // GetEvent acquires an event from the pool
 func GetEvent() *proxy.Event {
+	if err := assert.Check(eventPool.New != nil, "eventPool.New must be defined"); err != nil {
+		return &proxy.Event{}
+	}
 	e := eventPool.Get().(*proxy.Event)
 	// If it wasn't a new creation (miss), it's a hit
 	// This is a bit tricky with sync.Pool, but we can approximate miss count in New()
@@ -94,6 +98,9 @@ const maxBufferSize = 1024 * 1024 // 1MB limit for pooling
 
 // GetBuffer acquires a buffer from the pool
 func GetBuffer() *bytes.Buffer {
+	if err := assert.Check(bufferPool.New != nil, "bufferPool.New must be defined"); err != nil {
+		return bytes.NewBuffer(nil)
+	}
 	atomic.AddUint64(&globalMetrics.BufferHits, 1)
 	return bufferPool.Get().(*bytes.Buffer)
 }
@@ -105,6 +112,9 @@ func PutBuffer(b *bytes.Buffer) {
 	}
 	// If the buffer grew too large, don't return it to the pool to avoid memory bloat
 	if b.Cap() > maxBufferSize {
+		return
+	}
+	if err := assert.Check(b.Cap() <= maxBufferSize*2, "buffer grew dangerously large", "cap", b.Cap()); err != nil {
 		return
 	}
 	b.Reset()

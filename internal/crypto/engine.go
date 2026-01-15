@@ -27,13 +27,16 @@ func CalculateEventHash(prevHash string, payload interface{}) (string, error) {
 	}
 	// 1. First marshal to JSON to normalize the data structure
 	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
+	if err := assert.Check(err == nil, "json marshal failed", "err", err); err != nil {
 		return "", err
 	}
 
 	// 2. Unmarshal to a clean interface{} for JCS
 	var normalized interface{}
 	if err := json.Unmarshal(jsonBytes, &normalized); err != nil {
+		if err := assert.Check(false, "json unmarshal failed", "err", err); err != nil {
+			return "", err
+		}
 		return "", err
 	}
 
