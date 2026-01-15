@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourname/vouch/internal/assert"
-	"github.com/yourname/vouch/internal/core"
-	"github.com/yourname/vouch/internal/mcp"
-	"github.com/yourname/vouch/internal/pool"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/core"
+	"github.com/slyt3/vouch/internal/mcp"
+	"github.com/slyt3/vouch/internal/pool"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // PolicyAction defines the outcome of a policy check

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yourname/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/assert"
 	"gopkg.in/yaml.v3"
 )
 

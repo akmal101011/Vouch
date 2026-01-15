@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourname/vouch/internal/cli/cmd"
+	"github.com/slyt3/vouch/internal/cli/cmd"
 )
 
 func main() {

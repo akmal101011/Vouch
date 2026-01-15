@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourname/vouch/internal/assert"
-	"github.com/yourname/vouch/internal/crypto"
-	"github.com/yourname/vouch/internal/pool"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/crypto"
+	"github.com/slyt3/vouch/internal/pool"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // EventProcessor handles the logic for hashing, signing, and state tracking

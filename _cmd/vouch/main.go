@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourname/vouch/internal/ledger"
-	"github.com/yourname/vouch/internal/policy"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/ledger"
+	"github.com/slyt3/vouch/internal/policy"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // VouchProxy is the main proxy server

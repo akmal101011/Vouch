@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/yourname/vouch/internal/crypto"
+	"github.com/slyt3/vouch/internal/crypto"
 )
 
 func main() {

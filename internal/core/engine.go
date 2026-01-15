@@ -3,8 +3,8 @@ package core
 import (
 	"sync"
 
-	"github.com/yourname/vouch/internal/ledger"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/ledger"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // Engine is the central state manager for Vouch

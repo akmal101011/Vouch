@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourname/vouch/internal/assert"
-	"github.com/yourname/vouch/internal/ledger"
-	"github.com/yourname/vouch/internal/pool"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/ledger"
+	"github.com/slyt3/vouch/internal/pool"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 func EventsCommand() {

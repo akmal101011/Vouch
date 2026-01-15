@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourname/vouch/internal/assert"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // InsertEvent inserts a new event into the ledger

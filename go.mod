@@ -1,4 +1,4 @@
-module github.com/yourname/vouch
+module github.com/slyt3/vouch
 
 go 1.22.5
 

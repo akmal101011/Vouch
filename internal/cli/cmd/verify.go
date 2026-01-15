@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourname/vouch/internal/assert"
-	"github.com/yourname/vouch/internal/crypto"
-	"github.com/yourname/vouch/internal/ledger"
+	"github.com/slyt3/vouch/internal/assert"
+	"github.com/slyt3/vouch/internal/crypto"
+	"github.com/slyt3/vouch/internal/ledger"
 )
 
 func VerifyCommand() {

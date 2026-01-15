@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourname/vouch/internal/crypto"
-	"github.com/yourname/vouch/internal/pool"
-	"github.com/yourname/vouch/internal/proxy"
+	"github.com/slyt3/vouch/internal/crypto"
+	"github.com/slyt3/vouch/internal/pool"
+	"github.com/slyt3/vouch/internal/proxy"
 )
 
 // CreateGenesisBlock creates the initial genesis event for a new run
