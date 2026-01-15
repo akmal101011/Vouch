@@ -38,12 +38,13 @@ func CreateGenesisBlock(db *DB, signer *crypto.Signer, agentName string) (string
 	payload := map[string]interface{}{
 		"id":         genesisEvent.ID,
 		"run_id":     genesisEvent.RunID,
-		"seq_index":  float64(genesisEvent.SeqIndex), // Use float64 for JSON compatibility
+		"seq_index":  genesisEvent.SeqIndex,
 		"timestamp":  genesisEvent.Timestamp.Format(time.RFC3339Nano),
 		"actor":      genesisEvent.Actor,
 		"event_type": genesisEvent.EventType,
 		"method":     genesisEvent.Method,
 		"params":     genesisEvent.Params,
+		"response":   genesisEvent.Response,
 	}
 
 	currentHash, err := crypto.CalculateEventHash(genesisEvent.PrevHash, payload)

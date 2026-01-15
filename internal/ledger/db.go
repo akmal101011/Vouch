@@ -2,11 +2,14 @@ package ledger
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/yourname/ael/internal/proxy"
 )
 
 // DB wraps the SQLite database connection
@@ -129,4 +132,135 @@ func (db *DB) GetRunID() (string, error) {
 		return "", fmt.Errorf("querying run ID: %w", err)
 	}
 	return runID, nil
+}
+
+// GetAllEvents retrieves all events for a run, ordered by sequence
+func (db *DB) GetAllEvents(runID string) ([]proxy.Event, error) {
+	query := `
+		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
+		       params, response, task_id, task_state, prev_hash, current_hash, signature
+		FROM events 
+		WHERE run_id = ? 
+		ORDER BY seq_index ASC
+	`
+
+	rows, err := db.conn.Query(query, runID)
+	if err != nil {
+		return nil, fmt.Errorf("querying events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []proxy.Event
+	for rows.Next() {
+		var e proxy.Event
+		var timestamp, params, response, taskID, taskState string
+
+		err := rows.Scan(
+			&e.ID, &e.RunID, &e.SeqIndex, &timestamp, &e.Actor, &e.EventType, &e.Method,
+			&params, &response, &taskID, &taskState, &e.PrevHash, &e.CurrentHash, &e.Signature,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning event: %w", err)
+		}
+
+		// Parse timestamp
+		t, err := time.Parse(time.RFC3339Nano, timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("parsing timestamp: %w", err)
+		}
+		e.Timestamp = t
+
+		// Parse JSON fields
+		if params != "" {
+			var paramsMap map[string]interface{}
+			if err := json.Unmarshal([]byte(params), &paramsMap); err != nil {
+				return nil, fmt.Errorf("parsing params JSON: %w", err)
+			}
+			e.Params = paramsMap
+		}
+
+		if response != "" {
+			var responseMap map[string]interface{}
+			if err := json.Unmarshal([]byte(response), &responseMap); err != nil {
+				return nil, fmt.Errorf("parsing response JSON: %w", err)
+			}
+			e.Response = responseMap
+		}
+
+		events = append(events, e)
+	}
+
+	return events, nil
+}
+
+// GetRunInfo retrieves run metadata
+func (db *DB) GetRunInfo(runID string) (agentName, genesisHash, pubKey string, err error) {
+	query := `SELECT agent_name, genesis_hash, ledger_pub_key FROM runs WHERE id = ?`
+	err = db.conn.QueryRow(query, runID).Scan(&agentName, &genesisHash, &pubKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("querying run info: %w", err)
+	}
+	return agentName, genesisHash, pubKey, nil
+}
+
+// GetRecentEvents retrieves the N most recent events
+func (db *DB) GetRecentEvents(runID string, limit int) ([]proxy.Event, error) {
+	query := `
+		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
+		       params, response, task_id, task_state, prev_hash, current_hash, signature
+		FROM events 
+		WHERE run_id = ? 
+		ORDER BY seq_index DESC 
+		LIMIT ?
+	`
+
+	rows, err := db.conn.Query(query, runID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("querying recent events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []proxy.Event
+	for rows.Next() {
+		var e proxy.Event
+		var timestamp, params, response, taskID, taskState string
+
+		err := rows.Scan(
+			&e.ID, &e.RunID, &e.SeqIndex, &timestamp, &e.Actor, &e.EventType, &e.Method,
+			&params, &response, &taskID, &taskState, &e.PrevHash, &e.CurrentHash, &e.Signature,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning event: %w", err)
+		}
+
+		events = append(events, e)
+	}
+
+	return events, nil
+}
+
+// GetEventByID retrieves a specific event by ID
+func (db *DB) GetEventByID(eventID string) (*proxy.Event, error) {
+	query := `
+		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
+		       params, response, task_id, task_state, prev_hash, current_hash, signature
+		FROM events 
+		WHERE id = ?
+	`
+
+	var e proxy.Event
+	var timestamp, params, response, taskID, taskState string
+
+	err := db.conn.QueryRow(query, eventID).Scan(
+		&e.ID, &e.RunID, &e.SeqIndex, &timestamp, &e.Actor, &e.EventType, &e.Method,
+		&params, &response, &taskID, &taskState, &e.PrevHash, &e.CurrentHash, &e.Signature,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("event not found: %s", eventID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying event: %w", err)
+	}
+
+	return &e, nil
 }
