@@ -117,7 +117,20 @@ func main() {
 	// Custom response modifier
 	proxy.ModifyResponse = aelProxy.interceptResponse
 
-	// Start server
+	// Start API server for CLI commands (approval/rejection)
+	go func() {
+		apiMux := http.NewServeMux()
+		apiMux.HandleFunc("/api/approve/", aelProxy.handleApprove)
+		apiMux.HandleFunc("/api/reject/", aelProxy.handleReject)
+
+		apiAddr := ":9998"
+		log.Printf("API server listening on %s", apiAddr)
+		if err := http.ListenAndServe(apiAddr, apiMux); err != nil {
+			log.Fatalf("API server failed: %v", err)
+		}
+	}()
+
+	// Start proxy server
 	listenAddr := ":9999"
 	log.Printf("Proxying :9999 -> :8080")
 	log.Printf("Event buffer size: 1000")
@@ -343,4 +356,64 @@ func (a *AELProxy) checkConditions(conditions map[string]interface{}, params map
 
 	// Default: condition not met
 	return true
+}
+
+// handleApprove handles approval requests from the CLI
+func (a *AELProxy) handleApprove(w http.ResponseWriter, r *http.Request) {
+	// Extract event ID from URL path
+	eventID := strings.TrimPrefix(r.URL.Path, "/api/approve/")
+
+	if eventID == "" {
+		http.Error(w, "Event ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Look up the approval channel
+	val, ok := a.stallSignals.Load(eventID)
+	if !ok {
+		http.Error(w, "Event not found or already processed", http.StatusNotFound)
+		return
+	}
+
+	approvalChan := val.(chan bool)
+
+	// Send approval signal
+	select {
+	case approvalChan <- true:
+		log.Printf("Event %s approved via CLI", eventID)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Event approved\n"))
+	default:
+		http.Error(w, "Event already processed", http.StatusConflict)
+	}
+}
+
+// handleReject handles rejection requests from the CLI
+func (a *AELProxy) handleReject(w http.ResponseWriter, r *http.Request) {
+	// Extract event ID from URL path
+	eventID := strings.TrimPrefix(r.URL.Path, "/api/reject/")
+
+	if eventID == "" {
+		http.Error(w, "Event ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Look up the approval channel
+	val, ok := a.stallSignals.Load(eventID)
+	if !ok {
+		http.Error(w, "Event not found or already processed", http.StatusNotFound)
+		return
+	}
+
+	approvalChan := val.(chan bool)
+
+	// Send rejection signal (false)
+	select {
+	case approvalChan <- false:
+		log.Printf("Event %s rejected via CLI", eventID)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Event rejected\n"))
+	default:
+		http.Error(w, "Event already processed", http.StatusConflict)
+	}
 }

@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"io"
 	"fmt"
+	"net/http"
 	"log"
 	"os"
 
@@ -173,9 +175,25 @@ func approveCommand() {
 	}
 
 	eventID := os.Args[2]
-	fmt.Printf("Approving event: %s\n", eventID)
-	fmt.Println("Note: HTTP approval endpoint not yet implemented")
-	fmt.Println("Use the proxy's stdin for now (press Enter)")
+
+	// Send HTTP request to proxy API
+	url := fmt.Sprintf("http://localhost:9998/api/approve/%s", eventID)
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		fmt.Printf("Error: Failed to connect to AEL proxy: %v\n", err)
+		fmt.Println("Make sure the proxy is running on port 9998")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Printf("✓ Event %s approved successfully\n", eventID)
+	} else {
+		fmt.Printf("✗ Failed to approve event: %s\n", string(body))
+		os.Exit(1)
+	}
 }
 
 func rejectCommand() {
@@ -185,6 +203,23 @@ func rejectCommand() {
 	}
 
 	eventID := os.Args[2]
-	fmt.Printf("Rejecting event: %s\n", eventID)
-	fmt.Println("Note: HTTP rejection endpoint not yet implemented")
+
+	// Send HTTP request to proxy API
+	url := fmt.Sprintf("http://localhost:9998/api/reject/%s", eventID)
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		fmt.Printf("Error: Failed to connect to AEL proxy: %v\n", err)
+		fmt.Println("Make sure the proxy is running on port 9998")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Printf("✓ Event %s rejected successfully\n", eventID)
+	} else {
+		fmt.Printf("✗ Failed to reject event: %s\n", string(body))
+		os.Exit(1)
+	}
 }

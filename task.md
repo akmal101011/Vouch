@@ -1,22 +1,12 @@
-# Phase 3: Policy Guard - CLI Tool Implementation
+# Phase 3: Policy Guard - Completing Approval System
 
-## CLI Infrastructure
-- [/] Create `cmd/ael-cli/main.go` with command structure
-- [ ] Implement subcommand routing (approve, verify, status)
-- [ ] Add flag parsing for common options
-
-## Approval System
-- [ ] Implement `ael approve <event-id>` command
-- [ ] Add HTTP endpoint in proxy for approval
-- [ ] Support approval via HTTP endpoint
-- [ ] Add `ael reject <event-id>` command
-
-## Verification Commands
-- [/] Implement `ael verify` to validate hash chain
-- [ ] Add `ael status` to show current run info
-- [ ] Implement `ael events` to list recent events
+## HTTP Approval Endpoints
+- [/] Add `/api/approve/<event-id>` endpoint to proxy
+- [/] Add `/api/reject/<event-id>` endpoint to proxy
+- [/] Update CLI to send HTTP requests for approval/rejection
+- [ ] Test end-to-end approval flow
 
 ## Integration
-- [ ] Update proxy to expose approval endpoint
-- [ ] Test approval flow end-to-end
-- [ ] Update documentation with CLI usage
+- [ ] Start proxy, trigger stall, approve via CLI
+- [ ] Verify approval works correctly
+- [ ] Update walkthrough with approval demo
