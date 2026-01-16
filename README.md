@@ -1,4 +1,4 @@
-# Vouch: The AI Agent Flight Recorder
+# Vouch
 
 > **"If it isn't in the ledger, it didn't happen."**
 
