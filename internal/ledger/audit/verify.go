@@ -1,4 +1,4 @@
-package ledger
+package audit
 
 import (
 	"fmt"
@@ -9,6 +9,11 @@ import (
 	"github.com/slyt3/Vouch/internal/models"
 )
 
+// EventReader defines the subset of ledger operations needed for verification.
+type EventReader interface {
+	GetAllEvents(runID string) ([]models.Event, error)
+}
+
 // VerificationResult contains the results of chain verification
 type VerificationResult struct {
 	Valid        bool
@@ -18,7 +23,7 @@ type VerificationResult struct {
 }
 
 // VerifyChain validates the entire event chain for a given run
-func VerifyChain(db EventRepository, runID string, signer *crypto.Signer) (*VerificationResult, error) {
+func VerifyChain(db EventReader, runID string, signer *crypto.Signer) (*VerificationResult, error) {
 	if err := assert.Check(runID != "", "runID must not be empty"); err != nil {
 		return nil, err
 	}

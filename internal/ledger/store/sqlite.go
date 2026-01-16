@@ -1,4 +1,4 @@
-package ledger
+package store
 
 import (
 	"database/sql"

@@ -1,4 +1,4 @@
-package ledger
+package store
 
 import (
 	"os"
@@ -12,7 +12,7 @@ func TestStats(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "vouch-stats-test-*")
 	defer os.RemoveAll(tmpDir)
 
-	schemaContent, _ := os.ReadFile("../../schema.sql")
+	schemaContent, _ := os.ReadFile("../../../schema.sql")
 	_ = os.WriteFile(filepath.Join(tmpDir, "schema.sql"), schemaContent, 0644)
 
 	oldWd, _ := os.Getwd()

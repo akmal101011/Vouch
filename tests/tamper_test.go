@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/audit"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 	"github.com/slyt3/Vouch/internal/models"
 )
 
@@ -40,7 +42,12 @@ func TestTamperDetection(t *testing.T) {
 	os.Chdir(tempDir)
 	defer os.Chdir(origWd)
 
-	l, err := ledger.NewWorker(10, dbPath, keyPath)
+	dbStore, err := store.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+
+	l, err := ledger.NewWorker(10, dbStore, keyPath)
 	if err != nil {
 		t.Fatalf("failed to create worker: %v", err)
 	}
@@ -69,7 +76,7 @@ func TestTamperDetection(t *testing.T) {
 	}
 
 	// Verify initially valid
-	res, err := ledger.VerifyChain(db, runID, l.GetSigner())
+	res, err := audit.VerifyChain(db, runID, l.GetSigner())
 	if err != nil || !res.Valid {
 		t.Fatalf("initial chain invalid: %v (msg: %s)", err, res.ErrorMessage)
 	}
@@ -88,15 +95,15 @@ func TestTamperDetection(t *testing.T) {
 			t.Fatalf("failed to tamper: %v", err)
 		}
 
-		res, err := ledger.VerifyChain(db, runID, l.GetSigner())
+		res, err := audit.VerifyChain(db, runID, l.GetSigner())
 		if err != nil {
 			t.Fatalf("VerifyChain failed: %v", err)
 		}
 		if res.Valid {
 			t.Error("expected chain to be invalid after hash tampering")
 		}
-		if !strings.Contains(res.ErrorMessage, ledger.ErrHashMismatch.Error()) {
-			t.Errorf("expected error %v in %s", ledger.ErrHashMismatch, res.ErrorMessage)
+		if !strings.Contains(res.ErrorMessage, audit.ErrHashMismatch.Error()) {
+			t.Errorf("expected error %v in %s", audit.ErrHashMismatch, res.ErrorMessage)
 		}
 
 		// Restore
@@ -110,15 +117,15 @@ func TestTamperDetection(t *testing.T) {
 			t.Fatalf("failed to tamper: %v", err)
 		}
 
-		res, err := ledger.VerifyChain(db, runID, l.GetSigner())
+		res, err := audit.VerifyChain(db, runID, l.GetSigner())
 		if err != nil {
 			t.Fatalf("VerifyChain failed: %v", err)
 		}
 		if res.Valid {
 			t.Error("expected chain to be invalid after prev_hash tampering")
 		}
-		if res.ErrorMessage != ledger.ErrChainTampered.Error() {
-			t.Errorf("expected error %v, got %s", ledger.ErrChainTampered, res.ErrorMessage)
+		if res.ErrorMessage != audit.ErrChainTampered.Error() {
+			t.Errorf("expected error %v, got %s", audit.ErrChainTampered, res.ErrorMessage)
 		}
 
 		// Restore (approximate, since we don't store previous hash separately, we'd need to query seq 1)
@@ -134,15 +141,15 @@ func TestTamperDetection(t *testing.T) {
 			t.Fatalf("failed to tamper: %v", err)
 		}
 
-		res, err := ledger.VerifyChain(db, runID, l.GetSigner())
+		res, err := audit.VerifyChain(db, runID, l.GetSigner())
 		if err != nil {
 			t.Fatalf("VerifyChain failed: %v", err)
 		}
 		if res.Valid {
 			t.Error("expected chain to be invalid after signature tampering")
 		}
-		if !strings.Contains(res.ErrorMessage, ledger.ErrInvalidSignature.Error()) {
-			t.Errorf("expected error %v in %s", ledger.ErrInvalidSignature, res.ErrorMessage)
+		if !strings.Contains(res.ErrorMessage, audit.ErrInvalidSignature.Error()) {
+			t.Errorf("expected error %v in %s", audit.ErrInvalidSignature, res.ErrorMessage)
 		}
 	})
 }

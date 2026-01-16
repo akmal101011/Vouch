@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 )
 
 func StatusCommand() {
 	// Open database
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}

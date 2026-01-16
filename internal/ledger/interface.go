@@ -2,6 +2,21 @@ package ledger
 
 import "github.com/slyt3/Vouch/internal/models"
 
+// Stats related structs
+type RunStats struct {
+	RunID         string         `json:"run_id"`
+	TotalEvents   uint64         `json:"total_events"`
+	CallCount     uint64         `json:"call_count"`
+	BlockedCount  uint64         `json:"blocked_count"`
+	RiskBreakdown map[string]int `json:"risk_breakdown"`
+}
+
+type GlobalStats struct {
+	TotalRuns     int    `json:"total_runs"`
+	TotalEvents   uint64 `json:"total_events"`
+	CriticalCount int    `json:"critical_count"`
+}
+
 // EventRepository defines the storage interface for the Vouch ledger.
 // This allows swapping SQLite for Postgres/dqlite in the future without changing core logic.
 type EventRepository interface {

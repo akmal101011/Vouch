@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/slyt3/Vouch/internal/assert"
-	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 	"github.com/slyt3/Vouch/internal/pool"
 )
 
@@ -22,7 +22,7 @@ func EventsCommand() {
 	_ = eventsFlags.Parse(os.Args[2:])
 
 	// Open database
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err := assert.Check(err == nil, "failed to open database: %v", err); err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
@@ -60,7 +60,7 @@ func EventsCommand() {
 }
 
 func StatsCommand() {
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
@@ -126,7 +126,7 @@ func printPoolMetric(name string, hits, misses uint64) {
 }
 
 func RiskCommand() {
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}

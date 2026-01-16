@@ -1,28 +1,16 @@
-package ledger
+package store
 
-import "github.com/slyt3/Vouch/internal/assert"
-
-// Stats related structs
-type RunStats struct {
-	RunID         string         `json:"run_id"`
-	TotalEvents   uint64         `json:"total_events"`
-	CallCount     uint64         `json:"call_count"`
-	BlockedCount  uint64         `json:"blocked_count"`
-	RiskBreakdown map[string]int `json:"risk_breakdown"`
-}
-
-type GlobalStats struct {
-	TotalRuns     int    `json:"total_runs"`
-	TotalEvents   uint64 `json:"total_events"`
-	CriticalCount int    `json:"critical_count"`
-}
+import (
+	"github.com/slyt3/Vouch/internal/assert"
+	"github.com/slyt3/Vouch/internal/ledger"
+)
 
 // GetRunStats returns statistics for a specific run
-func (db *DB) GetRunStats(runID string) (*RunStats, error) {
+func (db *DB) GetRunStats(runID string) (*ledger.RunStats, error) {
 	if err := assert.Check(runID != "", "runID must not be empty"); err != nil {
 		return nil, err
 	}
-	stats := &RunStats{
+	stats := &ledger.RunStats{
 		RunID:         runID,
 		RiskBreakdown: make(map[string]int),
 	}
@@ -33,7 +21,7 @@ func (db *DB) GetRunStats(runID string) (*RunStats, error) {
 		       COALESCE(SUM(CASE WHEN event_type = 'blocked' THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN event_type = 'tool_call' THEN 1 ELSE 0 END), 0)
 		FROM events WHERE run_id = ?`, runID).Scan(&stats.TotalEvents, &stats.BlockedCount, &stats.CallCount)
-	if err := assert.Check(err == nil, "failed to scan run stats: %v", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -59,21 +47,21 @@ func (db *DB) GetRunStats(runID string) (*RunStats, error) {
 }
 
 // GetGlobalStats returns overall statistics
-func (db *DB) GetGlobalStats() (*GlobalStats, error) {
-	stats := &GlobalStats{}
+func (db *DB) GetGlobalStats() (*ledger.GlobalStats, error) {
+	stats := &ledger.GlobalStats{}
 
 	err := db.conn.QueryRow(`SELECT COUNT(*) FROM runs`).Scan(&stats.TotalRuns)
-	if err := assert.Check(err == nil, "failed to get total runs: %v", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	err = db.conn.QueryRow(`SELECT COUNT(*) FROM events`).Scan(&stats.TotalEvents)
-	if err := assert.Check(err == nil, "failed to get total events: %v", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	err = db.conn.QueryRow(`SELECT COUNT(*) FROM events WHERE risk_level = 'critical'`).Scan(&stats.CriticalCount)
-	if err := assert.Check(err == nil, "failed to get critical count: %v", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 

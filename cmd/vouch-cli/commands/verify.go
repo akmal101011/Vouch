@@ -7,12 +7,13 @@ import (
 
 	"github.com/slyt3/Vouch/internal/assert"
 	"github.com/slyt3/Vouch/internal/crypto"
-	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/audit"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 )
 
 func VerifyCommand() {
 	// Open database
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err := assert.Check(err == nil, "failed to open database: %v", err); err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
@@ -38,7 +39,7 @@ func VerifyCommand() {
 	fmt.Printf("Verifying chain for run: %s\n", runID[:8])
 
 	// Verify chain
-	result, err := ledger.VerifyChain(db, runID, signer)
+	result, err := audit.VerifyChain(db, runID, signer)
 	if err != nil {
 		log.Fatalf("Verification error: %v", err)
 	}

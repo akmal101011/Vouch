@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 )
 
 type EvidenceManifest struct {
@@ -42,7 +43,7 @@ func ExportCommand() {
 
 func ExportEvidenceBag(zipPath, targetRunID string) error {
 	// 1. Open DB
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
 		return fmt.Errorf("opening db: %w", err)
 	}

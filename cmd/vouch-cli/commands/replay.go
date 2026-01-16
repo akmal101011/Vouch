@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 )
 
 func ReplayCommand() {
@@ -25,7 +25,7 @@ func ReplayCommand() {
 		targetURL = os.Args[4]
 	}
 
-	db, err := ledger.NewDB("vouch.db")
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}

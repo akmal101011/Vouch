@@ -1,7 +1,6 @@
-package ledger
+package store
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -82,15 +81,9 @@ func (db *DB) GetLastEvent(runID string) (seqIndex uint64, currentHash string, e
 	if err := assert.Check(runID != "", "runID must not be empty"); err != nil {
 		return 0, "", err
 	}
-	if err := assert.Check(db.conn != nil, "database connection missing"); err != nil {
-		return 0, "", err
-	}
+
 	query := `SELECT seq_index, current_hash FROM events WHERE run_id = ? ORDER BY seq_index DESC LIMIT 1`
 	err = db.conn.QueryRow(query, runID).Scan(&seqIndex, &currentHash)
-	if err == sql.ErrNoRows {
-		// No events yet, return defaults
-		return 0, "", nil
-	}
 	if err != nil {
 		return 0, "", fmt.Errorf("querying last event: %w", err)
 	}
@@ -102,9 +95,7 @@ func (db *DB) GetAllEvents(runID string) ([]models.Event, error) {
 	if err := assert.Check(runID != "", "runID must not be empty"); err != nil {
 		return nil, err
 	}
-	if err := assert.Check(db.conn != nil, "database connection missing"); err != nil {
-		return nil, err
-	}
+
 	query := `
 		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
 		       params, response, task_id, task_state, parent_id, policy_id, risk_level, prev_hash, current_hash, signature
@@ -177,9 +168,7 @@ func (db *DB) GetRecentEvents(runID string, limit int) ([]models.Event, error) {
 	if err := assert.Check(limit > 0, "limit must be positive"); err != nil {
 		return nil, err
 	}
-	if err := assert.Check(db.conn != nil, "database connection missing"); err != nil {
-		return nil, err
-	}
+
 	query := `
 		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
 		       params, response, task_id, task_state, parent_id, policy_id, risk_level, prev_hash, current_hash, signature
@@ -225,9 +214,7 @@ func (db *DB) GetEventByID(eventID string) (*models.Event, error) {
 	if err := assert.Check(eventID != "", "eventID must not be empty"); err != nil {
 		return nil, err
 	}
-	if err := assert.Check(db.conn != nil, "database connection missing"); err != nil {
-		return nil, err
-	}
+
 	query := `
 		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, 
 		       params, response, task_id, task_state, parent_id, policy_id, risk_level, prev_hash, current_hash, signature
@@ -242,9 +229,6 @@ func (db *DB) GetEventByID(eventID string) (*models.Event, error) {
 		&e.ID, &e.RunID, &e.SeqIndex, &timestamp, &e.Actor, &e.EventType, &e.Method,
 		&params, &response, &taskID, &taskState, &parentID, &policyID, &riskLevel, &e.PrevHash, &e.CurrentHash, &e.Signature,
 	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("event not found: %s", eventID)
-	}
 	if err != nil {
 		return nil, fmt.Errorf("querying event: %w", err)
 	}
@@ -299,24 +283,8 @@ func (db *DB) GetEventsByTaskID(taskID string) ([]models.Event, error) {
 	return events, nil
 }
 
-// GetTaskFailureCount returns the number of failed or cancelled states for a task
-func (db *DB) GetTaskFailureCount(taskID string) (int, error) {
-	if err := assert.Check(taskID != "", "taskID must not be empty"); err != nil {
-		return 0, err
-	}
-	var count int
-	err := db.conn.QueryRow(`
-		SELECT COUNT(*) FROM events 
-		WHERE task_id = ? AND task_state IN ('failed', 'cancelled')
-	`, taskID).Scan(&count)
-	return count, err
-}
-
 // GetRiskEvents returns events with high or critical risk
 func (db *DB) GetRiskEvents() ([]models.Event, error) {
-	if err := assert.Check(db.conn != nil, "database connection missing"); err != nil {
-		return nil, err
-	}
 	query := `
 		SELECT id, run_id, seq_index, timestamp, actor, event_type, method, params, response,
 		       task_id, task_state, parent_id, policy_id, risk_level, prev_hash, current_hash, signature

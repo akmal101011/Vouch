@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/slyt3/Vouch/internal/crypto"
+	"github.com/slyt3/Vouch/internal/ledger/audit"
 	"github.com/slyt3/Vouch/internal/pool"
 )
 
@@ -30,7 +31,7 @@ func CreateGenesisBlock(db EventRepository, signer *crypto.Signer, agentName str
 	genesisEvent.WasBlocked = false
 
 	// Fetch Bitcoin Anchor (Phase 3)
-	anchor, err := FetchBitcoinAnchor()
+	anchor, err := audit.FetchBitcoinAnchor()
 	if err != nil {
 		// NASA Rule: Be robust. If anchor fails, log it but don't crash,
 		// but for Strict Integrity, we might want to fail-closed?

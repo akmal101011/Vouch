@@ -23,33 +23,27 @@ type Worker struct {
 	isUnhealthy atomic.Bool // Health sentinel
 }
 
-// NewWorker creates a new async ledger worker with a buffered channel
-func NewWorker(bufferSize int, dbPath, keyPath string) (*Worker, error) {
+// NewWorker creates a new async ledger worker with a buffered channel.
+// It uses dependency injection for the storage layer.
+func NewWorker(bufferSize int, db EventRepository, keyPath string) (*Worker, error) {
 	// NASA Rule: Check all parameters
 	if err := assert.Check(bufferSize > 0, "buffer size must be positive"); err != nil {
 		return nil, err
 	}
-	if err := assert.Check(dbPath != "", "db path must not be empty"); err != nil {
+	if err := assert.Check(db != nil, "database repository missing"); err != nil {
 		return nil, err
 	}
 	if err := assert.Check(keyPath != "", "key path must not be empty"); err != nil {
 		return nil, err
 	}
 
-	db, err := NewDB(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("initializing database: %w", err)
-	}
-
 	signer, err := crypto.NewSigner(keyPath)
 	if err != nil {
-		db.Close()
 		return nil, fmt.Errorf("initializing signer: %w", err)
 	}
 
 	rb, err := ring.New[*models.Event](bufferSize)
 	if err != nil {
-		db.Close()
 		return nil, err
 	}
 

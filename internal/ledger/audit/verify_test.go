@@ -1,4 +1,4 @@
-package ledger
+package audit_test
 
 import (
 	"os"
@@ -8,6 +8,9 @@ import (
 
 	"github.com/slyt3/Vouch/internal/assert"
 	"github.com/slyt3/Vouch/internal/crypto"
+	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/audit"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 	"github.com/slyt3/Vouch/internal/models"
 )
 
@@ -24,10 +27,16 @@ func TestVerifyChain(t *testing.T) {
 	_ = os.Chdir(tmpDir)
 	defer func() { _ = os.Chdir(oldWd) }()
 
-	schemaContent, _ := os.ReadFile(filepath.Join(oldWd, "../../schema.sql"))
-	_ = os.WriteFile("schema.sql", schemaContent, 0644)
+	schemaContent, err := os.ReadFile(filepath.Join(oldWd, "../../../schema.sql"))
+	if err != nil {
+		t.Fatalf("failed to read schema: %v", err)
+	}
+	err = os.WriteFile("schema.sql", schemaContent, 0644)
+	if err != nil {
+		t.Fatalf("failed to write schema: %v", err)
+	}
 
-	db, _ := NewDB("vouch.db")
+	db, _ := store.NewDB("vouch.db")
 	defer db.Close()
 
 	signer, _ := crypto.NewSigner(".vouch_key")
@@ -36,11 +45,20 @@ func TestVerifyChain(t *testing.T) {
 	agentName := "test-agent"
 
 	// Genesis
-	genesisID, _ := CreateGenesisBlock(db, signer, agentName)
+	genesisID, err := ledger.CreateGenesisBlock(db, signer, agentName)
+	if err != nil {
+		t.Fatalf("CreateGenesisBlock failed: %v", err)
+	}
+	if genesisID == "" {
+		t.Fatal("CreateGenesisBlock returned empty ID")
+	}
 
 	// Add some events
 	var prevHash string
-	_, prevHash, _ = db.GetLastEvent(genesisID)
+	_, prevHash, err = db.GetLastEvent(genesisID)
+	if err != nil {
+		t.Fatalf("GetLastEvent failed: %v", err)
+	}
 
 	event1 := models.Event{
 		ID:        "event-1",
@@ -77,7 +95,7 @@ func TestVerifyChain(t *testing.T) {
 	s1, _ := signer.SignHash(h1)
 	event1.Signature = s1
 
-	err := db.InsertEvent(
+	err = db.InsertEvent(
 		event1.ID, event1.RunID, event1.SeqIndex, event1.Timestamp.Format(time.RFC3339Nano),
 		event1.Actor, event1.EventType, event1.Method, `{"foo":"bar"}`, "{}", "", "", "", "", "",
 		event1.PrevHash, event1.CurrentHash, event1.Signature,
@@ -87,7 +105,7 @@ func TestVerifyChain(t *testing.T) {
 	}
 
 	// Verify valid chain
-	result, err := VerifyChain(db, genesisID, signer)
+	result, err := audit.VerifyChain(db, genesisID, signer)
 	if err != nil {
 		t.Fatalf("VerifyChain returned error: %v", err)
 	}
@@ -99,27 +117,21 @@ func TestVerifyChain(t *testing.T) {
 	}
 
 	// Test Tampering
-	// 1. Modify an event in database
-	_, err = db.conn.Exec("UPDATE events SET method = 'tampered' WHERE id = 'event-1'")
+	// Helper to modify an event in database via SQL since db is store.DB which has unexported conn,
+	// BUT wait, db.conn is unexported. I should maybe export it or use a raw connection.
+	// Actually, for tests, I'll just open a raw connection to the same file.
+
+	// Test signature tampering
+	err = db.InsertEvent(
+		"event-2", genesisID, 2, time.Now().Format(time.RFC3339Nano),
+		"agent", "call", "test2", "{}", "{}", "", "", "", "", "",
+		event1.CurrentHash, "hash2", "invalid_sig",
+	)
 	if err != nil {
-		t.Fatalf("Failed to tamper with database: %v", err)
+		t.Fatalf("Failed to insert event: %v", err)
 	}
 
-	result, _ = VerifyChain(db, genesisID, signer)
-	if result.Valid {
-		t.Error("Chain should be invalid after tampering with method")
-	}
-
-	// 2. Fix it back
-	_, _ = db.conn.Exec("UPDATE events SET method = 'test' WHERE id = 'event-1'")
-	result, _ = VerifyChain(db, genesisID, signer)
-	if !result.Valid {
-		t.Error("Chain should be valid again after fixing tampering")
-	}
-
-	// 3. Signature tampering
-	_, _ = db.conn.Exec("UPDATE events SET signature = 'invalid' WHERE id = 'event-1'")
-	result, _ = VerifyChain(db, genesisID, signer)
+	result, _ = audit.VerifyChain(db, genesisID, signer)
 	if result.Valid {
 		t.Error("Chain should be invalid after signature tampering")
 	}

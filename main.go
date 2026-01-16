@@ -10,6 +10,7 @@ import (
 	"github.com/slyt3/Vouch/internal/core"
 	"github.com/slyt3/Vouch/internal/interceptor"
 	"github.com/slyt3/Vouch/internal/ledger"
+	"github.com/slyt3/Vouch/internal/ledger/store"
 	"github.com/slyt3/Vouch/internal/observer"
 )
 
@@ -22,8 +23,12 @@ func main() {
 		log.Fatalf("Failed to load observer rules: %v", err)
 	}
 
-	// 2. Initialize Ledger Worker
-	worker, err := ledger.NewWorker(1000, "vouch.db", ".vouch_key")
+	// 2. Initialize Ledger Store & Worker
+	db, err := store.NewDB("vouch.db")
+	if err != nil {
+		log.Fatalf("Database init failed: %v", err)
+	}
+	worker, err := ledger.NewWorker(1000, db, ".vouch_key")
 	if err != nil {
 		log.Fatalf("Worker init failed: %v", err)
 	}

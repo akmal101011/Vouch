@@ -1,4 +1,4 @@
-package ledger
+package store
 
 import (
 	"os"
@@ -16,7 +16,7 @@ func TestDB(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Copy schema.sql to the test environment or ensure it's accessible
-	schemaContent, err := os.ReadFile("../../schema.sql")
+	schemaContent, err := os.ReadFile("../../../schema.sql")
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestDB(t *testing.T) {
 	// Test GetRunID
 	gotRunID, err := db.GetRunID()
 	if err != nil {
-		t.Fatalf("GetRunID failed: %m", err)
+		t.Fatalf("GetRunID failed: %v", err)
 	}
 	if gotRunID != runID {
 		t.Errorf("Expected run ID %s, got %s", runID, gotRunID)
