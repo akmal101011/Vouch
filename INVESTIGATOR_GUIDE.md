@@ -7,7 +7,7 @@ Before analyzing agent actions, you must prove the audit trail hasn't been tampe
 
 ```bash
 # Verify the entire ledger integrity
-vouch verify
+./vouch-cli verify
 ```
 **Verification Checks:**
 1.  **Merkle Linkage**: Ensures no events were deleted or inserted in the past.
@@ -19,23 +19,23 @@ When a specific failure occurs, use the Task ID provided by the agent or extract
 
 ### A. Surface High-Risk Actions
 ```bash
-vouch risk
+./vouch-cli risk
 ```
 Look for `critical` or `high` risk tags associated with deletion, financial transactions, or unauthorized access.
 
 ### B. Visualize Causal Timelines
 Reconstruct the agent's thought process and tool dependency tree.
 ```bash
-vouch trace <task-id>
+./vouch-cli trace <task-id>
 # Or generate a report for stakeholders
-vouch trace <task-id> --html report.html
+./vouch-cli trace <task-id> --html report.html
 ```
 
 ## 3. Incident Reproduction (Replay)
 To verify if a bug is reproducible or to test a safety fix, replay the original request.
 
 ```bash
-vouch replay <event-id> --target http://localhost:8080
+./vouch-cli replay <event-id> --target http://localhost:8080
 ```
 This re-sends the exact parameters stored in the ledger and compares the new output with the original response recorded during the incident.
 
@@ -43,7 +43,7 @@ This re-sends the exact parameters stored in the ledger and compares the new out
 For legal handover or external compliance audits, package the run into a cryptographically sealed Evidence Bag.
 
 ```bash
-vouch export evidence_bag.zip
+./vouch-cli export evidence_bag.zip
 ```
 The ZIP contains:
 *   `vouch.db`: The raw, immutable SQLite ledger.
@@ -52,5 +52,5 @@ The ZIP contains:
 ---
 
 ## Technical Appendix: Failure Modes
-*   **Tamper Detected**: If `vouch verify` fails, the ledger is compromised. Do not use for legal proceedings without manual binary forensic analysis of the `prev_hash` chain.
+*   **Tamper Detected**: If `./vouch-cli verify` fails, the ledger is compromised. Do not use for legal proceedings without manual binary forensic analysis of the `prev_hash` chain.
 *   **Gap Detected**: Indicates Vouch dropped events due to extreme load (fail-open mode). Check system metrics for `ring_buffer_full` events.

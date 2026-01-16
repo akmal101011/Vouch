@@ -61,7 +61,7 @@ go install github.com/slyt3/Vouch@latest
 Vouch runs as a sidecar proxy.
 ```bash
 # Start listening on port 9999, forwarding to your tool server on 8080
-vouch-proxy --target http://localhost:8080 --port 9999
+./vouch --target http://localhost:8080 --port 9999
 ```
 
 ### 3. Connect Your Agent
@@ -80,7 +80,7 @@ When an incident occurs, use the CLI to investigate.
 **Verify Integrity**
 Check if the log file has been tampered with since creation.
 ```bash
-vouch verify
+./vouch-cli verify
 # > ✓ Chain valid. 14,203 events verified.
 # > ✓ Signatures valid.
 # > ✓ Bitcoin Anchor confirmed (Block #824100).
@@ -89,13 +89,13 @@ vouch verify
 **Trace Agent Reasoning**
 Reconstruct the execution tree for a specific task.
 ```bash
-vouch trace <task-id>
+./vouch-cli trace <task-id>
 ```
 
 **Export Evidence**
 Create a cryptographically sealed zip file for legal/compliance handover.
 ```bash
-vouch export evidence_bag.zip
+./vouch-cli export evidence_bag.zip
 ```
 
 ---
@@ -104,7 +104,9 @@ vouch export evidence_bag.zip
 
 Vouch is built on a **Modular Hexagonal Architecture** to ensure robustness and testability.
 
-*   **`internal/ledger`**: The core cryptographic engine. Handles hashing, signing, and SQLite persistence.
+*   **`internal/ledger`**: The core cryptographic orchestration.
+*   **`internal/ledger/store`**: Implements SQLite persistence, event storage, and embedded schema.
+*   **`internal/ledger/audit`**: Forensic verification engine and blockchain anchoring.
 *   **`internal/observer`**: Passive rule engine. Tags events with risk levels (Low, High, Critical) based on `vouch-policy.yaml`.
 *   **`internal/interceptor`**: High-performance HTTP proxy logic.
 *   **`internal/ring`**: Fixed-size ring buffers for async IO (decoupling recording from forwarding).

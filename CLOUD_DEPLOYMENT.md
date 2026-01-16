@@ -12,18 +12,17 @@ FROM golang:1.22-alpine AS builder
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 COPY . .
-RUN go build -o vouch-proxy .
+RUN go build -o vouch main.go
 
 # Production Stage
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
 WORKDIR /root/
-COPY --from=builder /app/vouch-proxy .
+COPY --from=builder /app/vouch .
 COPY --from=builder /app/vouch-policy.yaml .
-COPY --from=builder /app/schema.sql .
 
 EXPOSE 9999 9998
-CMD ["./vouch-proxy"]
+CMD ["./vouch"]
 ```
 
 ## CI/CD Pipeline

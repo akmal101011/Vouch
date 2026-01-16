@@ -7,7 +7,8 @@ Vouch (Associated Evidence Ledger) is a high-integrity forensic logger for AI ag
 ```mermaid
 graph TD
     CLI[cmd/vouch-cli] --> CMD[commands]
-    CMD --> LEDGER[internal/ledger]
+    CMD --> AUDIT[internal/ledger/audit]
+    CMD --> STORE[internal/ledger/store]
     CMD --> POOL[internal/pool]
     
     MAIN[server main.go] --> CORE[internal/core]
@@ -24,11 +25,14 @@ graph TD
     WORKER --> RING[internal/ring]
     
     PROCESSOR --> REPO["EventRepository (Interface)"]
-    REPO --> DB[internal/ledger/db]
+    REPO --> STORE
     PROCESSOR --> CRYPTO[internal/crypto]
     PROCESSOR --> MODELS[internal/models]
     
-    LEDGER --> MODELS
+    AUDIT --> REPO
+    AUDIT --> CRYPTO
+    
+    STORE --> MODELS
     INTERCEPTOR --> MODELS
     POOL --> MODELS
 ```
@@ -75,7 +79,9 @@ graph TD
 *   `internal/core`: State management and orchestration.
 *   `internal/models`: Shared data structures (`Event`).
 *   `internal/observer`: Rule loading and evaluation.
-*   `internal/ledger`: Database, hashing, signing, and verification.
+*   `internal/ledger`: Core worker and orchestration.
+*   `internal/ledger/store`: SQLite persistence layer and embedded schema.
+*   `internal/ledger/audit`: Forensic verification and blockchain anchoring.
 *   `internal/interceptor`: HTTP middleware.
 *   `internal/crypto`: Key management and primitives.
 *   `internal/assert`: NASA-compliant assertion safety.
