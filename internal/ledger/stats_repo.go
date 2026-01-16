@@ -33,7 +33,7 @@ func (db *DB) GetRunStats(runID string) (*RunStats, error) {
 		       COALESCE(SUM(CASE WHEN event_type = 'blocked' THEN 1 ELSE 0 END), 0),
 		       COALESCE(SUM(CASE WHEN event_type = 'tool_call' THEN 1 ELSE 0 END), 0)
 		FROM events WHERE run_id = ?`, runID).Scan(&stats.TotalEvents, &stats.BlockedCount, &stats.CallCount)
-	if err := assert.Check(err == nil, "failed to scan run stats", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to scan run stats: %v", err); err != nil {
 		return nil, err
 	}
 
@@ -63,17 +63,17 @@ func (db *DB) GetGlobalStats() (*GlobalStats, error) {
 	stats := &GlobalStats{}
 
 	err := db.conn.QueryRow(`SELECT COUNT(*) FROM runs`).Scan(&stats.TotalRuns)
-	if err := assert.Check(err == nil, "failed to get total runs", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get total runs: %v", err); err != nil {
 		return nil, err
 	}
 
 	err = db.conn.QueryRow(`SELECT COUNT(*) FROM events`).Scan(&stats.TotalEvents)
-	if err := assert.Check(err == nil, "failed to get total events", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get total events: %v", err); err != nil {
 		return nil, err
 	}
 
 	err = db.conn.QueryRow(`SELECT COUNT(*) FROM events WHERE risk_level = 'critical'`).Scan(&stats.CriticalCount)
-	if err := assert.Check(err == nil, "failed to get critical count", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get critical count: %v", err); err != nil {
 		return nil, err
 	}
 

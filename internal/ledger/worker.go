@@ -9,20 +9,33 @@ import (
 	"github.com/slyt3/Vouch/internal/crypto"
 	"github.com/slyt3/Vouch/internal/pool"
 	"github.com/slyt3/Vouch/internal/proxy"
+	"github.com/slyt3/Vouch/internal/ring"
 )
 
 // Worker processes events asynchronously without blocking the proxy
 type Worker struct {
-	eventChannel chan *proxy.Event
-	db           *DB
-	signer       *crypto.Signer
-	runID        string
-	processor    *EventProcessor
-	isUnhealthy  atomic.Bool // Health sentinel
+	ringBuffer  *ring.Buffer[*proxy.Event]
+	signalChan  chan struct{} // Signal to wake up processor
+	db          *DB
+	signer      *crypto.Signer
+	runID       string
+	processor   *EventProcessor
+	isUnhealthy atomic.Bool // Health sentinel
 }
 
 // NewWorker creates a new async ledger worker with a buffered channel
 func NewWorker(bufferSize int, dbPath, keyPath string) (*Worker, error) {
+	// NASA Rule: Check all parameters
+	if err := assert.Check(bufferSize > 0, "buffer size must be positive"); err != nil {
+		return nil, err
+	}
+	if err := assert.Check(dbPath != "", "db path must not be empty"); err != nil {
+		return nil, err
+	}
+	if err := assert.Check(keyPath != "", "key path must not be empty"); err != nil {
+		return nil, err
+	}
+
 	db, err := NewDB(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("initializing database: %w", err)
@@ -34,10 +47,17 @@ func NewWorker(bufferSize int, dbPath, keyPath string) (*Worker, error) {
 		return nil, fmt.Errorf("initializing signer: %w", err)
 	}
 
+	rb, err := ring.New[*proxy.Event](bufferSize)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
 	return &Worker{
-		eventChannel: make(chan *proxy.Event, bufferSize),
-		db:           db,
-		signer:       signer,
+		ringBuffer: rb,
+		signalChan: make(chan struct{}, 1),
+		db:         db,
+		signer:     signer,
 	}, nil
 }
 
@@ -89,31 +109,49 @@ func (w *Worker) Start() error {
 
 // Submit sends an event to the worker for processing (non-blocking)
 func (w *Worker) Submit(event *proxy.Event) {
-	if err := assert.Check(event != nil, "event must not be nil"); err != nil {
+	// NASA Rule: Check preconditions
+	assert.NotNil(event, "event")
+
+	if w.ringBuffer.IsFull() {
+		log.Printf("[BACKPRESSURE] Ring buffer full, dropping event %s", event.ID)
+		// Option: In Strict Mode, we would block here.
+		// For MVP Asyn Mode, we drop.
 		return
 	}
-	capacity := cap(w.eventChannel)
-	current := len(w.eventChannel)
-	if capacity > 0 && float64(current)/float64(capacity) >= 0.8 {
-		log.Printf("[BACKPRESSURE] Ledger buffer at %d/%d (>=80%%) capacity", current, capacity)
+
+	if err := w.ringBuffer.Push(event); err != nil {
+		log.Printf("[ERROR] Failed to push to ring buffer: %v", err)
+		return
 	}
 
-	w.eventChannel <- event
+	// Notify worker (non-blocking send)
+	select {
+	case w.signalChan <- struct{}{}:
+	default:
+		// Already signaled
+	}
 }
 
-// Close shuts down the worker and closes the database
+// Close shuts down the worker and releases resources
 func (w *Worker) Close() error {
-	close(w.eventChannel)
+	close(w.signalChan)
 	return w.db.Close()
 }
 
 // processEvents is the main worker loop
 func (w *Worker) processEvents() {
-	for event := range w.eventChannel {
-		if err := w.processor.ProcessEvent(event); err != nil {
-			log.Printf("[CRITICAL] Event Processing Failure: %v", err)
-			w.isUnhealthy.Store(true)
+	for range w.signalChan {
+		// Drain buffer
+		for !w.ringBuffer.IsEmpty() {
+			event, err := w.ringBuffer.Pop()
+			if err != nil {
+				break
+			}
+			if err := w.processor.ProcessEvent(event); err != nil {
+				log.Printf("[CRITICAL] Event Processing Failure: %v", err)
+				w.isUnhealthy.Store(true)
+			}
+			pool.PutEvent(event)
 		}
-		pool.PutEvent(event)
 	}
 }

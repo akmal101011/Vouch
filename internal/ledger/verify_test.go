@@ -6,11 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/slyt3/Vouch/internal/assert"
 	"github.com/slyt3/Vouch/internal/crypto"
 	"github.com/slyt3/Vouch/internal/proxy"
 )
 
 func TestVerifyChain(t *testing.T) {
+	// Disable strict assertions for this test as we test failure conditions
+	assert.StrictMode = false
+	defer func() { assert.StrictMode = true }()
+
 	// Setup
 	tmpDir, _ := os.MkdirTemp("", "vouch-verify-test-*")
 	defer os.RemoveAll(tmpDir)

@@ -24,7 +24,7 @@ func EventsCommand() {
 
 	// Open database
 	db, err := ledger.NewDB("vouch.db")
-	if err := assert.Check(err == nil, "failed to open database", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to open database: %v", err); err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	if err := assert.Check(db != nil, "database handle is nil"); err != nil {
@@ -34,7 +34,7 @@ func EventsCommand() {
 
 	// Get current run ID
 	runID, err := db.GetRunID()
-	if err := assert.Check(err == nil, "failed to get run ID", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get run ID: %v", err); err != nil {
 		log.Fatalf("Failed to get run ID: %v", err)
 	}
 
@@ -45,7 +45,7 @@ func EventsCommand() {
 
 	// Get recent events
 	events, err := db.GetRecentEvents(runID, *limit)
-	if err := assert.Check(err == nil, "failed to get events", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get events: %v", err); err != nil {
 		log.Fatalf("Failed to get events: %v", err)
 	}
 
@@ -74,7 +74,7 @@ func StatsCommand() {
 	}
 
 	stats, err := db.GetRunStats(runID)
-	if err := assert.Check(err == nil, "failed to get stats", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get stats: %v", err); err != nil {
 		log.Fatalf("Failed to get stats: %v", err)
 	}
 
@@ -134,7 +134,7 @@ func RiskCommand() {
 	defer db.Close()
 
 	risky, err := db.GetRiskEvents()
-	if err := assert.Check(err == nil, "failed to get risky events", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get risky events: %v", err); err != nil {
 		log.Fatalf("Failed to get risky events: %v", err)
 	}
 

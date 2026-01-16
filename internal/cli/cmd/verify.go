@@ -13,14 +13,14 @@ import (
 func VerifyCommand() {
 	// Open database
 	db, err := ledger.NewDB("vouch.db")
-	if err := assert.Check(err == nil, "failed to open database", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to open database: %v", err); err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
 
 	// Load signer
 	signer, err := crypto.NewSigner(".vouch_key")
-	if err := assert.Check(err == nil, "failed to load signer", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to load signer: %v", err); err != nil {
 		log.Fatalf("Failed to load signer: %v", err)
 	}
 

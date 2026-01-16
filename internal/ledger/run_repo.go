@@ -43,7 +43,7 @@ func (db *DB) HasRuns() (bool, error) {
 	}
 	var count int
 	err := db.conn.QueryRow("SELECT COUNT(*) FROM runs").Scan(&count)
-	if err := assert.Check(err == nil, "failed to count runs", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to count runs: %v", err); err != nil {
 		return false, fmt.Errorf("checking runs: %w", err)
 	}
 	return count > 0, nil

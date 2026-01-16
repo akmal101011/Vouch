@@ -114,7 +114,7 @@ func PutBuffer(b *bytes.Buffer) {
 	if b.Cap() > maxBufferSize {
 		return
 	}
-	if err := assert.Check(b.Cap() <= maxBufferSize*2, "buffer grew dangerously large", "cap", b.Cap()); err != nil {
+	if err := assert.Check(b.Cap() <= maxBufferSize*2, "buffer grew dangerously large: cap=%d", b.Cap()); err != nil {
 		return
 	}
 	b.Reset()

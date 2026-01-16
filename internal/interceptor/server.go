@@ -94,7 +94,7 @@ func (i *Interceptor) extractTaskMetadata(body []byte) (*mcp.MCPRequest, string,
 	if err := assert.Check(len(body) > 0, "request body is empty"); err != nil {
 		return nil, "", "", err
 	}
-	if err := assert.Check(len(body) < 1024*1024, "request body too large", "size", len(body)); err != nil {
+	if err := assert.Check(len(body) < 1024*1024, "request body too large: size=%d", len(body)); err != nil {
 		return nil, "", "", err
 	}
 
@@ -106,7 +106,7 @@ func (i *Interceptor) extractTaskMetadata(body []byte) (*mcp.MCPRequest, string,
 	if err := assert.Check(mcpReq.Method != "", "method must not be empty"); err != nil {
 		return nil, "", "", err
 	}
-	if err := assert.Check(mcpReq.JSONRPC == "2.0", "invalid JSON-RPC version", "version", mcpReq.JSONRPC); err != nil {
+	if err := assert.Check(mcpReq.JSONRPC == "2.0", "invalid JSON-RPC version: %s", mcpReq.JSONRPC); err != nil {
 		return nil, "", "", err
 	}
 

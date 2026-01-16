@@ -1,38 +1,46 @@
-//go:build !release
-// +build !release
-
 package assert
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"runtime"
+	"runtime/debug"
 )
 
-// Check verifies a safety-critical condition.
-// If the condition is false, it logs the failure context (caller info, message, fields)
-// and returns a descriptive error. It never panics.
-func Check(condition bool, msg string, fields ...interface{}) error {
+// Mode defines the behavior of the assertion library
+// In strict mode (default), assertions panic.
+var StrictMode = true
+
+// Check verifies a condition is true. If false, it logs the error and
+// in strict mode, panics. This enforces the "Fail Fast" rule.
+// Use this for preconditions, postconditions, and invariants.
+func Check(condition bool, msg string, args ...interface{}) error {
 	if condition {
 		return nil
 	}
 
-	// Capture caller info (filename, line)
-	_, file, line, ok := runtime.Caller(1)
-	if !ok {
-		file = "unknown"
-		line = 0
+	formattedMsg := fmt.Sprintf(msg, args...)
+	err := fmt.Errorf("ASSERTION FAILED: %s", formattedMsg)
+
+	log.Printf("[CRITICAL] %v\nStack: %s", err, debug.Stack())
+
+	if StrictMode {
+		panic(err)
 	}
 
-	// Format context fields for logging
-	context := ""
-	if len(fields) > 0 {
-		context = fmt.Sprintf(" | context: %v", fields)
-	}
+	return err
+}
 
-	errMsg := fmt.Sprintf("[ASSERTION FAILURE] %s:%d: %s%s", file, line, msg, context)
-	log.Println(errMsg)
+// NotNil checks that a pointer or interface is not nil.
+func NotNil(obj interface{}, name string) {
+	Check(obj != nil, "%s must not be nil", name)
+}
 
-	return errors.New(errMsg)
+// InRange checks that value is within [min, max] inclusive.
+func InRange(val, min, max int, name string) {
+	Check(val >= min && val <= max, "%s (%d) out of range [%d, %d]", name, val, min, max)
+}
+
+// True is an alias for Check, for readability.
+func True(condition bool, msg string, args ...interface{}) {
+	_ = Check(condition, msg, args...)
 }

@@ -89,7 +89,7 @@ func (p *EventProcessor) persistEvent(event *proxy.Event) error {
 	}
 	// 1. Assign sequence index
 	stats, err := p.db.GetRunStats(p.runID)
-	if err := assert.Check(err == nil, "failed to get run stats", "err", err); err != nil {
+	if err := assert.Check(err == nil, "failed to get run stats: %v", err); err != nil {
 		return fmt.Errorf("getting run stats: %w", err)
 	}
 	event.SeqIndex = stats.TotalEvents
@@ -103,7 +103,7 @@ func (p *EventProcessor) persistEvent(event *proxy.Event) error {
 		if err != nil {
 			return fmt.Errorf("getting last event: %w", err)
 		}
-		if err := assert.Check(lastHash != "", "prev_hash must be non-empty", "seq", event.SeqIndex); err != nil {
+		if err := assert.Check(lastHash != "", "prev_hash must be non-empty: seq=%d", event.SeqIndex); err != nil {
 			return err
 		}
 		event.PrevHash = lastHash

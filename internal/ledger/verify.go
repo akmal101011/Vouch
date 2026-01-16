@@ -34,7 +34,7 @@ func VerifyChain(db *DB, runID string, signer *crypto.Signer) (*VerificationResu
 
 	// Get all events for this run, ordered by sequence
 	events, err := db.GetAllEvents(runID)
-	if err := assert.Check(err == nil, "database query failed", "err", err); err != nil {
+	if err := assert.Check(err == nil, "database query failed: %v", err); err != nil {
 		return nil, fmt.Errorf("failed to get events: %w", err)
 	}
 
@@ -73,10 +73,10 @@ func VerifyChain(db *DB, runID string, signer *crypto.Signer) (*VerificationResu
 // VerifyEvent validates a single event's hash and signature
 func VerifyEvent(event *proxy.Event, signer *crypto.Signer) error {
 	// Safety Assertion: Check signature before hash verification
-	if err := assert.Check(event.Signature != "", "event signature must not be empty", "id", event.ID); err != nil {
+	if err := assert.Check(event.Signature != "", "event signature must not be empty: id=%s", event.ID); err != nil {
 		return err
 	}
-	if err := assert.Check(event.CurrentHash != "", "event current hash is missing", "id", event.ID); err != nil {
+	if err := assert.Check(event.CurrentHash != "", "event current hash is missing: id=%s", event.ID); err != nil {
 		return err
 	}
 	// 4. Calculate hash using normalized payload and JCS
@@ -111,7 +111,7 @@ func VerifyEvent(event *proxy.Event, signer *crypto.Signer) error {
 
 	// Verify signature
 	isValid := signer.VerifySignature(calculatedHash, event.Signature)
-	if err := assert.Check(isValid, "signature verification failed", "id", event.ID, "hash", calculatedHash); err != nil {
+	if err := assert.Check(isValid, "signature verification failed: id=%s hash=%s", event.ID, calculatedHash); err != nil {
 		return fmt.Errorf("signature verification failed")
 	}
 
