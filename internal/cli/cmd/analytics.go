@@ -13,7 +13,6 @@ import (
 	"github.com/slyt3/Vouch/internal/assert"
 	"github.com/slyt3/Vouch/internal/ledger"
 	"github.com/slyt3/Vouch/internal/pool"
-	"github.com/slyt3/Vouch/internal/proxy"
 )
 
 func EventsCommand() {
@@ -150,61 +149,5 @@ func RiskCommand() {
 		if e.PolicyID != "" {
 			fmt.Printf("    Policy: %s\n", e.PolicyID)
 		}
-	}
-}
-
-func TopologyCommand() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: vouch topology <task-id>")
-		os.Exit(1)
-	}
-	taskID := os.Args[2]
-
-	db, err := ledger.NewDB("vouch.db")
-	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
-	}
-	defer db.Close()
-
-	events, err := db.GetEventsByTaskID(taskID)
-	if err != nil {
-		log.Fatalf("Failed to get events: %v", err)
-	}
-
-	if len(events) == 0 {
-		fmt.Printf("No events found for task %s\n", taskID)
-		return
-	}
-
-	fmt.Printf("Task Topology: %s\n", taskID)
-	fmt.Println("======================================")
-
-	// Build the tree
-	byParent := make(map[string][]proxy.Event)
-	var roots []proxy.Event
-
-	for _, e := range events {
-		if e.ParentID == "" {
-			roots = append(roots, e)
-		} else {
-			byParent[e.ParentID] = append(byParent[e.ParentID], e)
-		}
-	}
-
-	var printNode func(e proxy.Event, indent string)
-	printNode = func(e proxy.Event, indent string) {
-		status := ""
-		if e.WasBlocked {
-			status = " [BLOCKED]"
-		}
-		fmt.Printf("%s└─ %s (%s)%s\n", indent, e.Method, e.ID[:8], status)
-		children := byParent[e.ID]
-		for _, child := range children {
-			printNode(child, indent+"   ")
-		}
-	}
-
-	for _, root := range roots {
-		printNode(root, "")
 	}
 }
