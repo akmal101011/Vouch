@@ -1,0 +1,21 @@
+# Vouch Scenario Policies
+# Categorizes cloud operations to demonstrate forensic risk levels
+
+rules:
+  - id: cloud-inventory
+    name: Cloud Inventory Listing
+    description: Record all attempts to list cloud resources
+    match:
+      method: "GET"
+      path: "/compute/instances"
+    risk_level: low
+
+  - id: critical-data-deletion
+    name: Production Database Deletion
+    description: DETECTS attempts to delete production storage
+    match:
+      method: "POST"
+      path: "/database/delete"
+      params:
+        name: "prod-users-v2"
+    risk_level: critical
