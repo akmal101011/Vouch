@@ -15,27 +15,7 @@ func TestStats(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	schemaContent, err := os.ReadFile("../../../schema.sql")
-	if err != nil {
-		t.Fatalf("failed to read schema: %v", err)
-	}
-	err = os.WriteFile(filepath.Join(tmpDir, "schema.sql"), schemaContent, 0644)
-	if err != nil {
-		t.Fatalf("failed to write schema: %v", err)
-	}
-
-	oldWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("failed to change directory: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(oldWd)
-	}()
-
-	db, err := NewDB("vouch.db")
+	db, err := NewDB(filepath.Join(tmpDir, "vouch.db"))
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}

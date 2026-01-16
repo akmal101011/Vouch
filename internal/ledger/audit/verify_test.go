@@ -2,7 +2,6 @@ package audit_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -23,27 +22,10 @@ func TestVerifyChain(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "vouch-verify-test-*")
 	defer os.RemoveAll(tmpDir)
 
-	oldWd, err := os.Getwd()
+	db, err := store.NewDB("vouch.db")
 	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
+		t.Fatalf("failed to create database: %v", err)
 	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("failed to change directory: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(oldWd)
-	}()
-
-	schemaContent, err := os.ReadFile(filepath.Join(oldWd, "../../../schema.sql"))
-	if err != nil {
-		t.Fatalf("failed to read schema: %v", err)
-	}
-	err = os.WriteFile("schema.sql", schemaContent, 0644)
-	if err != nil {
-		t.Fatalf("failed to write schema: %v", err)
-	}
-
-	db, _ := store.NewDB("vouch.db")
 	defer db.Close()
 
 	signer, _ := crypto.NewSigner(".vouch_key")

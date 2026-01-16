@@ -26,29 +26,7 @@ func TestTamperDetection(t *testing.T) {
 	dbPath := filepath.Join(tempDir, "vouch_tamper.db")
 	keyPath := filepath.Join(tempDir, "test.key")
 
-	// Copy schema.sql to temp dir for NewDB to find it
-	schemaContent, err := os.ReadFile("../schema.sql")
-	if err != nil {
-		t.Fatalf("failed to read schema: %v", err)
-	}
-	err = os.WriteFile(filepath.Join(tempDir, "schema.sql"), schemaContent, 0644)
-	if err != nil {
-		t.Fatalf("failed to write schema: %v", err)
-	}
-
 	// 1. Setup Ledger and Signer
-	// Need to set Cwd to tempDir so worker finds schema.sql
-	origWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("failed to change directory: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(origWd)
-	}()
-
 	dbStore, err := store.NewDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to create store: %v", err)

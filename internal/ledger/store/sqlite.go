@@ -2,12 +2,16 @@ package store
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+//go:embed schema.sql
+var schemaSQL string
 
 // DB wraps the SQLite database connection
 type DB struct {
@@ -34,22 +38,8 @@ func NewDB(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("enabling WAL mode: %w", err)
 	}
 
-	// Execute schema
-	schemaPath := "schema.sql"
-	if !filepath.IsAbs(schemaPath) {
-		wd, err := os.Getwd()
-		if err == nil {
-			schemaPath = filepath.Join(wd, schemaPath)
-		}
-	}
-
-	schemaSQL, err := os.ReadFile(schemaPath)
-	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("reading schema file: %w", err)
-	}
-
-	if _, err := conn.Exec(string(schemaSQL)); err != nil {
+	// Execute embedded schema
+	if _, err := conn.Exec(schemaSQL); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("executing schema: %w", err)
 	}

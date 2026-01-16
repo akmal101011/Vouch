@@ -15,30 +15,8 @@ func TestDB(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Copy schema.sql to the test environment or ensure it's accessible
-	schemaContent, err := os.ReadFile("../../../schema.sql")
-	if err != nil {
-		t.Fatalf("Failed to read schema.sql: %v", err)
-	}
-	err = os.WriteFile(filepath.Join(tmpDir, "schema.sql"), schemaContent, 0644)
-	if err != nil {
-		t.Fatalf("Failed to write schema.sql to temp dir: %v", err)
-	}
-
-	// Change working directory to tmpDir so NewDB can find schema.sql
-	oldWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("failed to change directory: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(oldWd)
-	}()
-
 	// Create database
-	db, err := NewDB("vouch.db")
+	db, err := NewDB(filepath.Join(tmpDir, "vouch.db"))
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}
