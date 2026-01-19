@@ -85,8 +85,8 @@ func ReplayCommand() {
 
 	// 4. Verification Check
 	if resp.StatusCode < 300 {
-		fmt.Println("\n✓ Replay successful (HTTP 2xx)")
+		fmt.Println("\n[OK] Replay successful (HTTP 2xx)")
 	} else {
-		fmt.Printf("\n× Replay failed (HTTP %d)\n", resp.StatusCode)
+		fmt.Printf("\n[FAILED] Replay failed (HTTP %d)\n", resp.StatusCode)
 	}
 }

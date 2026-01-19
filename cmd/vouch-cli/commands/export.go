@@ -38,7 +38,7 @@ func ExportCommand() {
 	if err := ExportEvidenceBag(outputFile, targetRunID); err != nil {
 		log.Fatalf("Export failed: %v", err)
 	}
-	fmt.Printf("✓ Evidence bag created: %s\n", outputFile)
+	fmt.Printf("[OK] Evidence bag created: %s\n", outputFile)
 }
 
 func ExportEvidenceBag(zipPath, targetRunID string) error {

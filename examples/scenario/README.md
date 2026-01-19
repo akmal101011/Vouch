@@ -41,7 +41,7 @@ See exactly what happened and when:
 ```bash
 ./vouch-cli trace
 ```
-*Look for the `‼` symbol marking the critical deletion attempt.*
+*Look for the '[!!]' symbol marking the critical deletion attempt.*
 
 ### 2. Verify Evidence Integrity
 Prove that the logs haven't been tampered with:

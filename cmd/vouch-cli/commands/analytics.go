@@ -138,7 +138,7 @@ func RiskCommand() {
 	}
 
 	if len(risky) == 0 {
-		fmt.Println("✓ No high-risk events detected")
+		fmt.Println("[OK] No high-risk events detected")
 		return
 	}
 

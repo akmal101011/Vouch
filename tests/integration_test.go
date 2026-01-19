@@ -156,7 +156,7 @@ policies:
 	}
 
 	// 8. Verify ledger integrity
-	verifyCmd := exec.Command(cliPath, "verify")
+	verifyCmd := exec.Command(cliPath, "verify", "--skip-live")
 	verifyCmd.Dir = tmpDir
 	out, err = verifyCmd.CombinedOutput()
 	if err != nil {

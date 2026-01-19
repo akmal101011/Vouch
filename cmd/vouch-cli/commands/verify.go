@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +13,11 @@ import (
 )
 
 func VerifyCommand() {
+	// Parse flags
+	verifyFlags := flag.NewFlagSet("verify", flag.ExitOnError)
+	skipLive := verifyFlags.Bool("skip-live", false, "Skip live verification of Bitcoin anchors")
+	_ = verifyFlags.Parse(os.Args[2:])
+
 	// Open database
 	db, err := store.NewDB("vouch.db")
 	if err := assert.Check(err == nil, "failed to open database: %v", err); err != nil {
@@ -45,9 +51,9 @@ func VerifyCommand() {
 	}
 
 	if result.Valid {
-		fmt.Printf("✓ Chain is valid (%d events verified)\n", result.TotalEvents)
+		fmt.Printf("[OK] Chain is valid (%d events verified)\n", result.TotalEvents)
 	} else {
-		fmt.Print("✗ Chain verification failed\n")
+		fmt.Print("[FAILED] Chain verification failed\n")
 		fmt.Printf("  Error: %s\n", result.ErrorMessage)
 		if result.FailedAtSeq > 0 {
 			fmt.Printf("  Failed at sequence: %d\n", result.FailedAtSeq)
@@ -55,15 +61,19 @@ func VerifyCommand() {
 		os.Exit(1)
 	}
 
+	if *skipLive {
+		return
+	}
+
 	// Verify Bitcoin Anchors (Live)
 	fmt.Println("Verifying external Bitcoin anchors...")
 	anchorResult, err := audit.VerifyAnchors(db, runID)
 	if err != nil {
-		fmt.Printf("! Anchor verification failed: %v\n", err)
+		fmt.Printf("[WARN] Anchor verification failed: %v\n", err)
 	} else if anchorResult.Valid {
-		fmt.Printf("✓ Bitcoin anchors verified against Blockstream API (%d anchors checked)\n", anchorResult.AnchorsChecked)
+		fmt.Printf("[OK] Bitcoin anchors verified against Blockstream API (%d anchors checked)\n", anchorResult.AnchorsChecked)
 	} else {
-		fmt.Printf("✗ Bitcoin anchor mismatch: %s\n", anchorResult.ErrorMessage)
+		fmt.Printf("[FAILED] Bitcoin anchor mismatch: %s\n", anchorResult.ErrorMessage)
 		os.Exit(1)
 	}
 }

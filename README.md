@@ -2,7 +2,7 @@
 
 > **"If it isnt in the ledger, it didnt happen."**
 
-hit the star if you like the repo ⭐️
+hit the star if you like the repo 
 
 Vouch is a **forensic-grade flight recorder** for autonomous AI agents. It passively captures tool execution, cryptographically signs every action, and maintains an immutable, tamper-evident audit trail.
 
@@ -40,7 +40,7 @@ go build -o vouch-cli cmd/vouch-cli/main.go
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Detailed guides for every stakeholder:
 

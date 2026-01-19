@@ -59,7 +59,7 @@ func TraceCommand() {
 		if err != nil {
 			log.Fatalf("Failed to generate HTML report: %v", err)
 		}
-		fmt.Printf("✓ Forensic HTML report generated: %s\n", htmlOutput)
+		fmt.Printf("[OK] Forensic HTML report generated: %s\n", htmlOutput)
 		return
 	}
 
@@ -98,21 +98,21 @@ func buildTree(events []models.Event) ([]models.Event, map[string][]models.Event
 
 func printTraceNode(e models.Event, childrenMap map[string][]models.Event, prefix string, isLast bool, startTime time.Time) {
 	// Marker symbols
-	marker := "├── "
+	marker := "|-- "
 	if isLast {
-		marker = "└── "
+		marker = "`-- "
 	}
 
 	// Status icon
-	statusSym := "○" // Default: Call
+	statusSym := "[ ]" // Default: Call
 	if e.EventType == "tool_response" {
-		statusSym = "●" // Response
+		statusSym = "[x]" // Response
 	}
 	if e.WasBlocked {
-		statusSym = "×" // Blocked
+		statusSym = "[X]" // Blocked
 	}
 	if e.RiskLevel == "critical" {
-		statusSym = "‼" // Critical
+		statusSym = "[!!]" // Critical
 	}
 
 	// Calculate delta from start
@@ -125,7 +125,7 @@ func printTraceNode(e models.Event, childrenMap map[string][]models.Event, prefi
 	if isLast {
 		newPrefix += "    "
 	} else {
-		newPrefix += "│   "
+		newPrefix += "|   "
 	}
 
 	children := childrenMap[e.ID]
