@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +183,31 @@ func CheckConditions(conditions []map[string]string, params map[string]interface
 			if fmt.Sprintf("%v", val) != value {
 				return false
 			}
+		case "gt", "lt", "gte", "lte":
+			fVal, ok1 := toFloat(val)
+			fTarget, err2 := strconv.ParseFloat(value, 64)
+			if !ok1 || err2 != nil {
+				return false
+			}
+
+			switch operator {
+			case "gt":
+				if !(fVal > fTarget) {
+					return false
+				}
+			case "lt":
+				if !(fVal < fTarget) {
+					return false
+				}
+			case "gte":
+				if !(fVal >= fTarget) {
+					return false
+				}
+			case "lte":
+				if !(fVal <= fTarget) {
+					return false
+				}
+			}
 		default:
 			// Unknown operator, skip
 			continue
@@ -189,4 +215,22 @@ func CheckConditions(conditions []map[string]string, params map[string]interface
 	}
 
 	return true
+}
+
+func toFloat(v interface{}) (float64, bool) {
+	switch i := v.(type) {
+	case float64:
+		return i, true
+	case float32:
+		return float64(i), true
+	case int:
+		return float64(i), true
+	case int64:
+		return float64(i), true
+	case string:
+		f, err := strconv.ParseFloat(i, 64)
+		return f, err == nil
+	default:
+		return 0, false
+	}
 }

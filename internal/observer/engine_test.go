@@ -134,3 +134,87 @@ policies:
 		}
 	}
 }
+
+func TestCheckConditions(t *testing.T) {
+	tests := []struct {
+		name       string
+		conditions []map[string]string
+		params     map[string]interface{}
+		want       bool
+	}{
+		{
+			name: "eq success",
+			conditions: []map[string]string{
+				{"key": "amount", "operator": "eq", "value": "100"},
+			},
+			params: map[string]interface{}{"amount": 100},
+			want:   true,
+		},
+		{
+			name: "gt success",
+			conditions: []map[string]string{
+				{"key": "amount", "operator": "gt", "value": "1000"},
+			},
+			params: map[string]interface{}{"amount": 1500},
+			want:   true,
+		},
+		{
+			name: "gt fail",
+			conditions: []map[string]string{
+				{"key": "amount", "operator": "gt", "value": "1000"},
+			},
+			params: map[string]interface{}{"amount": 500},
+			want:   false,
+		},
+		{
+			name: "lt success",
+			conditions: []map[string]string{
+				{"key": "age", "operator": "lt", "value": "18"},
+			},
+			params: map[string]interface{}{"age": 17},
+			want:   true,
+		},
+		{
+			name: "gte success",
+			conditions: []map[string]string{
+				{"key": "score", "operator": "gte", "value": "50"},
+			},
+			params: map[string]interface{}{"score": 50},
+			want:   true,
+		},
+		{
+			name: "lte success",
+			conditions: []map[string]string{
+				{"key": "score", "operator": "lte", "value": "50"},
+			},
+			params: map[string]interface{}{"score": "50"}, // string param
+			want:   true,
+		},
+		{
+			name: "multi condition success",
+			conditions: []map[string]string{
+				{"key": "amount", "operator": "gt", "value": "100"},
+				{"key": "mode", "operator": "eq", "value": "live"},
+			},
+			params: map[string]interface{}{"amount": 200, "mode": "live"},
+			want:   true,
+		},
+		{
+			name: "multi condition fail",
+			conditions: []map[string]string{
+				{"key": "amount", "operator": "gt", "value": "100"},
+				{"key": "mode", "operator": "eq", "value": "live"},
+			},
+			params: map[string]interface{}{"amount": 50, "mode": "live"},
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckConditions(tt.conditions, tt.params); got != tt.want {
+				t.Errorf("CheckConditions() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
