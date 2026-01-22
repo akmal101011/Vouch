@@ -200,7 +200,7 @@ func (i *Interceptor) submitToolCallEvent(taskID string, mcpReq *mcp.MCPRequest,
 				event.ParentID = pid
 			} else {
 				if err := assert.Check(false, "parentID has unexpected type for taskID=%s", taskID); err != nil {
-					// Recovery: skip parent linkage on type mismatch
+					log.Printf("[WARN] parentID type mismatch for taskID=%s", taskID)
 				}
 			}
 		}

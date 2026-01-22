@@ -64,7 +64,7 @@ func (h *Handlers) HandlePrometheus(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	if err := assert.Check(tasks <= maxActiveTasks, "active tasks exceeded cap: %d", tasks); err != nil {
-		// Recovery: cap already enforced, no further action required.
+		log.Printf("[WARN] active tasks exceeded cap: %d", tasks)
 	}
 
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
