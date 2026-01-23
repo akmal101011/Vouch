@@ -37,7 +37,7 @@ go build -o vouch-cli cmd/vouch-cli/main.go
 *   **Forensic Ready**: Meets [FRE 902(13)](https://www.law.cornell.edu/rules/fre/rule_902) standards for self-authenticating electronic records.
 *   **Bitcoin Anchored**: Genesis blocks and periodic state are anchored to the Bitcoin blockchain for external proof-of-existence.
 *   **Dynamic Policies**: Hot-reload security rules from `vouch-policy.yaml` without restarting the server.
-*   **Production Ready**: Prometheus metrics endpoint for real-time monitoring and alerting.
+*   **Production Ready**: Prometheus metrics endpoint with queue depth and latency histograms.
 *   **High Performance**: < 2ms overhead with zero-allocation memory pools.
 
 ---

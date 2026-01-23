@@ -50,7 +50,7 @@ Focus: reliability, observability, and evidence integrity for early adopters.
   - Unauthorized requests return 401
 
 5) Graceful shutdown
-- Status: Planned
+- Status: Done
 - Scope: drain queues, flush ledger, clean stop
 - Acceptance:
   - No data loss on SIGINT/SIGTERM with active load
@@ -60,7 +60,7 @@ Focus: reliability, observability, and evidence integrity for early adopters.
 ## Reliability and observability
 
 6) Metrics expansion
-- Status: Planned
+- Status: Done
 - Scope: queue depth, drop rate, latency histograms
 - Acceptance:
   - Prometheus exposes latency and queue depth metrics

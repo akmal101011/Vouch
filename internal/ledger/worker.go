@@ -28,17 +28,39 @@ type Worker struct {
 	isUnhealthy     atomic.Bool   // Health sentinel
 	processedEvents atomic.Uint64 // Metrics
 	droppedEvents   atomic.Uint64 // Metrics
-	closing         atomic.Bool   // Shutdown sentinel
+	latencySumNs    atomic.Uint64 // Latency sum (ns)
+	latencyCount    atomic.Uint64 // Latency count
+	latencyBuckets  [maxLatencyBuckets]atomic.Uint64
+	closing         atomic.Bool // Shutdown sentinel
 	wg              sync.WaitGroup
 	shutdownOnce    sync.Once
 }
 
 const (
-	maxAnchorTicks   = 1 << 30
-	maxSignalBatches = 1 << 30
-	maxDrainEvents   = 1 << 20
-	maxShutdownTicks = 1 << 12
+	maxAnchorTicks    = 1 << 30
+	maxSignalBatches  = 1 << 30
+	maxDrainEvents    = 1 << 20
+	maxShutdownTicks  = 1 << 12
+	maxLatencyBuckets = 7
 )
+
+var latencyBucketUpperNs = [maxLatencyBuckets]uint64{
+	1 * uint64(time.Millisecond),
+	5 * uint64(time.Millisecond),
+	10 * uint64(time.Millisecond),
+	25 * uint64(time.Millisecond),
+	50 * uint64(time.Millisecond),
+	100 * uint64(time.Millisecond),
+	^uint64(0),
+}
+
+// LatencySnapshot captures event processing latency metrics.
+type LatencySnapshot struct {
+	BoundsNs [maxLatencyBuckets]uint64
+	Counts   [maxLatencyBuckets]uint64
+	SumNs    uint64
+	Count    uint64
+}
 
 // NewWorker creates a new async ledger worker with a buffered channel.
 // It uses dependency injection for the storage layer.
@@ -137,7 +159,7 @@ func (w *Worker) Start() error {
 
 // Submit sends an event to the worker for processing (non-blocking)
 func (w *Worker) Submit(event *models.Event) {
-	// NASA Rule: Check preconditions
+	// Check preconditions
 	if err := assert.NotNil(event, "event"); err != nil {
 		return
 	}
@@ -173,7 +195,41 @@ func (w *Worker) Submit(event *models.Event) {
 
 // Stats returns worker performance metrics
 func (w *Worker) Stats() (processed, dropped uint64) {
+	if err := assert.NotNil(w, "worker"); err != nil {
+		return 0, 0
+	}
 	return w.processedEvents.Load(), w.droppedEvents.Load()
+}
+
+// QueueDepth returns the current queue depth and capacity.
+func (w *Worker) QueueDepth() (int, int) {
+	if err := assert.NotNil(w, "worker"); err != nil {
+		return 0, 0
+	}
+	if err := assert.NotNil(w.ringBuffer, "ring buffer"); err != nil {
+		return 0, 0
+	}
+
+	return w.ringBuffer.Len(), w.ringBuffer.Cap()
+}
+
+// LatencyMetrics returns a snapshot of latency histogram data.
+func (w *Worker) LatencyMetrics() LatencySnapshot {
+	if err := assert.NotNil(w, "worker"); err != nil {
+		return LatencySnapshot{}
+	}
+	if err := assert.Check(maxLatencyBuckets > 0, "latency buckets must be positive"); err != nil {
+		return LatencySnapshot{}
+	}
+
+	var snap LatencySnapshot
+	for i := 0; i < maxLatencyBuckets; i++ {
+		snap.BoundsNs[i] = latencyBucketUpperNs[i]
+		snap.Counts[i] = w.latencyBuckets[i].Load()
+	}
+	snap.SumNs = w.latencySumNs.Load()
+	snap.Count = w.latencyCount.Load()
+	return snap
 }
 
 // Close shuts down the worker and releases resources
@@ -271,10 +327,12 @@ func (w *Worker) drainBuffer() error {
 		if err != nil {
 			break
 		}
+		start := time.Now()
 		if err := w.processor.ProcessEvent(event); err != nil {
 			log.Printf("[CRITICAL] Event Processing Failure: %v", err)
 			w.isUnhealthy.Store(true)
 		}
+		w.recordLatency(time.Since(start))
 		w.processedEvents.Add(1)
 		pool.PutEvent(event)
 	}
@@ -338,10 +396,12 @@ func (w *Worker) processEvents() {
 			if err != nil {
 				break
 			}
+			start := time.Now()
 			if err := w.processor.ProcessEvent(event); err != nil {
 				log.Printf("[CRITICAL] Event Processing Failure: %v", err)
 				w.isUnhealthy.Store(true)
 			}
+			w.recordLatency(time.Since(start))
 			w.processedEvents.Add(1)
 			pool.PutEvent(event)
 		}
@@ -349,4 +409,34 @@ func (w *Worker) processEvents() {
 	if err := assert.Check(false, "processEvents exceeded max signal batches"); err != nil {
 		return
 	}
+}
+
+func (w *Worker) recordLatency(d time.Duration) {
+	if err := assert.NotNil(w, "worker"); err != nil {
+		return
+	}
+	if err := assert.Check(d >= 0, "latency duration must be non-negative"); err != nil {
+		return
+	}
+
+	if err := assert.Check(maxLatencyBuckets > 0, "latency buckets must be positive"); err != nil {
+		return
+	}
+
+	if d == 0 {
+		w.latencySumNs.Add(0)
+		w.latencyCount.Add(1)
+		w.latencyBuckets[0].Add(1)
+		return
+	}
+
+	latencyNs := uint64(d.Nanoseconds())
+	for i := 0; i < maxLatencyBuckets; i++ {
+		if latencyNs <= latencyBucketUpperNs[i] {
+			w.latencyBuckets[i].Add(1)
+			break
+		}
+	}
+	w.latencySumNs.Add(latencyNs)
+	w.latencyCount.Add(1)
 }
