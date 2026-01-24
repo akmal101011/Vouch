@@ -57,7 +57,9 @@ func (h *Handlers) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+		logging.Error("health_response_write_failed", logging.Fields{Component: "api", Error: err.Error()})
+	}
 }
 
 func (h *Handlers) HandleReady(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +92,9 @@ func (h *Handlers) HandleReady(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ready"))
+	if _, err := w.Write([]byte("ready")); err != nil {
+		logging.Error("ready_response_write_failed", logging.Fields{Component: "api", Error: err.Error()})
+	}
 }
 
 func (h *Handlers) HandlePrometheus(w http.ResponseWriter, r *http.Request) {
