@@ -85,13 +85,28 @@ func (i *Interceptor) InterceptRequest(req *http.Request) {
 	// We no longer block traffic. We only observe.
 	// if action == ActionStall { ... }
 
-	// 4. Redaction (if needed)
+	// 4. Apply Redaction & Submit Event
+	if err := i.applyRedactionAndSubmit(req, action, matchedRule, bodyBytes, requestID, taskID, method, mcpReq); err != nil {
+		return
+	}
+}
+
+// applyRedactionAndSubmit handles redaction and event submission
+func (i *Interceptor) applyRedactionAndSubmit(req *http.Request, action PolicyAction, matchedRule *observer.Rule, bodyBytes []byte, requestID, taskID, method string, mcpReq *mcp.MCPRequest) error {
+	if err := assert.Check(mcpReq != nil, "mcpReq must not be nil"); err != nil {
+		return err
+	}
+	if err := assert.Check(len(method) > 0, "method must not be empty"); err != nil {
+		return err
+	}
+
+	// Redaction (if needed)
 	if action == ActionRedact && matchedRule != nil {
 		scrubbedBody, err := i.redactSensitiveData(bodyBytes, matchedRule.Redact)
 		if err != nil {
 			logging.Error("redaction_failed", logging.Fields{Component: "interceptor", RequestID: requestID, TaskID: taskID, Method: method, PolicyID: matchedRule.ID, RiskLevel: matchedRule.RiskLevel, Error: err.Error()})
 			i.SendErrorResponse(req, http.StatusInternalServerError, -32000, "Redaction failed")
-			return
+			return err
 		}
 		bodyBytes = scrubbedBody
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -99,8 +114,9 @@ func (i *Interceptor) InterceptRequest(req *http.Request) {
 
 	logging.Info("request_observed", logging.Fields{Component: "interceptor", RequestID: requestID, TaskID: taskID, Method: method, PolicyID: policyIDOrEmpty(matchedRule), RiskLevel: riskLevelOrEmpty(matchedRule)})
 
-	// 5. Submit Event & Forward
+	// Submit Event & Forward
 	i.submitToolCallEvent(taskID, mcpReq, matchedRule)
+	return nil
 }
 
 // extractTaskMetadata parses and validates the request

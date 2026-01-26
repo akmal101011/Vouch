@@ -9,9 +9,13 @@ import (
 
 	"github.com/slyt3/Vouch/internal/assert"
 	"github.com/slyt3/Vouch/internal/core"
+	"github.com/slyt3/Vouch/internal/ledger"
 	"github.com/slyt3/Vouch/internal/logging"
 	"github.com/slyt3/Vouch/internal/pool"
 )
+
+// LatencySnapshot is aliased from ledger package for clarity
+type LatencySnapshot = ledger.LatencySnapshot
 
 type Handlers struct {
 	Core *core.Engine
@@ -104,13 +108,42 @@ func (h *Handlers) HandlePrometheus(w http.ResponseWriter, r *http.Request) {
 	if err := assert.NotNil(h.Core, "core"); err != nil {
 		return
 	}
+
+	metrics := h.collectMetrics()
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	h.formatPrometheusText(w, metrics)
+}
+
+// prometheusMetrics holds all metrics for Prometheus export
+type prometheusMetrics struct {
+	PoolEventHits   uint64
+	PoolEventMisses uint64
+	EventsProcessed uint64
+	EventsDropped   uint64
+	ActiveTasks     int
+	QueueDepth      int
+	QueueCapacity   int
+	LatencyMetrics  LatencySnapshot
+}
+
+// collectMetrics gathers all metrics from the system
+func (h *Handlers) collectMetrics() *prometheusMetrics {
+	if err := assert.NotNil(h, "handlers"); err != nil {
+		return &prometheusMetrics{}
+	}
+	if err := assert.NotNil(h.Core, "core"); err != nil {
+		return &prometheusMetrics{}
+	}
+
 	poolMetrics := pool.GetMetrics()
 	proc, drop := h.Core.Worker.Stats()
 	queueDepth, queueCap := h.Core.Worker.QueueDepth()
 	latency := h.Core.Worker.LatencyMetrics()
+
 	if err := assert.Check(queueCap >= 0, "queue capacity must be non-negative"); err != nil {
 		logging.Warn("queue_capacity_invalid", logging.Fields{Component: "api", Error: err.Error()})
 	}
+
 	tasks := 0
 	const maxActiveTasks = 10000
 	h.Core.ActiveTasks.Range(func(_, _ interface{}) bool {
@@ -124,38 +157,75 @@ func (h *Handlers) HandlePrometheus(w http.ResponseWriter, r *http.Request) {
 		logging.Warn("active_tasks_exceeded", logging.Fields{Component: "api", Error: err.Error()})
 	}
 
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	return &prometheusMetrics{
+		PoolEventHits:   poolMetrics.EventHits,
+		PoolEventMisses: poolMetrics.EventMisses,
+		EventsProcessed: proc,
+		EventsDropped:   drop,
+		ActiveTasks:     tasks,
+		QueueDepth:      queueDepth,
+		QueueCapacity:   queueCap,
+		LatencyMetrics:  latency,
+	}
+}
+
+// formatPrometheusText writes metrics in Prometheus text format
+func (h *Handlers) formatPrometheusText(w http.ResponseWriter, m *prometheusMetrics) {
+	if err := assert.NotNil(m, "metrics"); err != nil {
+		return
+	}
+	if err := assert.NotNil(w, "response writer"); err != nil {
+		return
+	}
+
 	fmt.Fprintf(w, "# HELP vouch_pool_event_hits_total Total hits on the event pool\n")
 	fmt.Fprintf(w, "# TYPE vouch_pool_event_hits_total counter\n")
-	fmt.Fprintf(w, "vouch_pool_event_hits_total %d\n", poolMetrics.EventHits)
+	fmt.Fprintf(w, "vouch_pool_event_hits_total %d\n", m.PoolEventHits)
 
 	fmt.Fprintf(w, "# HELP vouch_pool_event_misses_total Total misses (allocations) in the event pool\n")
 	fmt.Fprintf(w, "# TYPE vouch_pool_event_misses_total counter\n")
-	fmt.Fprintf(w, "vouch_pool_event_misses_total %d\n", poolMetrics.EventMisses)
+	fmt.Fprintf(w, "vouch_pool_event_misses_total %d\n", m.PoolEventMisses)
 
 	fmt.Fprintf(w, "# HELP vouch_ledger_events_processed_total Total events successfully written to the ledger\n")
 	fmt.Fprintf(w, "# TYPE vouch_ledger_events_processed_total counter\n")
-	fmt.Fprintf(w, "vouch_ledger_events_processed_total %d\n", proc)
+	fmt.Fprintf(w, "vouch_ledger_events_processed_total %d\n", m.EventsProcessed)
 
 	fmt.Fprintf(w, "# HELP vouch_ledger_events_dropped_total Total events dropped due to backpressure\n")
 	fmt.Fprintf(w, "# TYPE vouch_ledger_events_dropped_total counter\n")
-	fmt.Fprintf(w, "vouch_ledger_events_dropped_total %d\n", drop)
+	fmt.Fprintf(w, "vouch_ledger_events_dropped_total %d\n", m.EventsDropped)
 
 	fmt.Fprintf(w, "# HELP vouch_engine_active_tasks_total Number of currently active causal tasks\n")
 	fmt.Fprintf(w, "# TYPE vouch_engine_active_tasks_total gauge\n")
-	fmt.Fprintf(w, "vouch_engine_active_tasks_total %d\n", tasks)
+	fmt.Fprintf(w, "vouch_engine_active_tasks_total %d\n", m.ActiveTasks)
 
 	fmt.Fprintf(w, "# HELP vouch_ledger_queue_depth Current queue depth\n")
 	fmt.Fprintf(w, "# TYPE vouch_ledger_queue_depth gauge\n")
-	fmt.Fprintf(w, "vouch_ledger_queue_depth %d\n", queueDepth)
+	fmt.Fprintf(w, "vouch_ledger_queue_depth %d\n", m.QueueDepth)
 
 	fmt.Fprintf(w, "# HELP vouch_ledger_queue_capacity Queue capacity\n")
 	fmt.Fprintf(w, "# TYPE vouch_ledger_queue_capacity gauge\n")
-	fmt.Fprintf(w, "vouch_ledger_queue_capacity %d\n", queueCap)
+	fmt.Fprintf(w, "vouch_ledger_queue_capacity %d\n", m.QueueCapacity)
+
+	h.formatLatencyHistogram(w, &m.LatencyMetrics)
+}
+
+// formatLatencyHistogram writes the latency histogram in Prometheus format
+func (h *Handlers) formatLatencyHistogram(w http.ResponseWriter, latency *LatencySnapshot) {
+	if err := assert.NotNil(latency, "latency histogram"); err != nil {
+		return
+	}
+	if err := assert.NotNil(w, "response writer"); err != nil {
+		return
+	}
 
 	fmt.Fprintf(w, "# HELP vouch_ledger_event_latency_seconds Event processing latency\n")
 	fmt.Fprintf(w, "# TYPE vouch_ledger_event_latency_seconds histogram\n")
-	for i := 0; i < len(latency.BoundsNs); i++ {
+
+	const maxBuckets = 20
+	for i := 0; i < maxBuckets; i++ {
+		if i >= len(latency.BoundsNs) {
+			break
+		}
 		upper := latency.BoundsNs[i]
 		label := ""
 		if upper == ^uint64(0) {

@@ -73,7 +73,27 @@ func (p *EventProcessor) persistEvent(event *models.Event) error {
 	if err := assert.Check(event != nil, "event must not be nil"); err != nil {
 		return err
 	}
-	// 1. Assign sequence index
+
+	// 1. Assign sequence index and validate chain
+	if err := p.assignSequenceAndPrevHash(event); err != nil {
+		return err
+	}
+
+	// 2. Hash and sign the event
+	if err := p.hashAndSignEvent(event); err != nil {
+		return err
+	}
+
+	// 3. Store in database
+	return p.db.StoreEvent(event)
+}
+
+// assignSequenceAndPrevHash assigns the sequence index and previous hash
+func (p *EventProcessor) assignSequenceAndPrevHash(event *models.Event) error {
+	if err := assert.Check(event != nil, "event must not be nil"); err != nil {
+		return err
+	}
+
 	stats, err := p.db.GetRunStats(p.runID)
 	if err := assert.Check(err == nil, "failed to get run stats: %v", err); err != nil {
 		return fmt.Errorf("getting run stats: %w", err)
@@ -81,11 +101,7 @@ func (p *EventProcessor) persistEvent(event *models.Event) error {
 	event.SeqIndex = stats.TotalEvents
 	event.RunID = p.runID
 
-	// 2. Get previous hash and validate sequence
-	var lastIndex uint64
-	var lastHash string
-
-	lastIndex, lastHash, err = p.db.GetLastEvent(p.runID)
+	lastIndex, lastHash, err := p.db.GetLastEvent(p.runID)
 	if err != nil {
 		return fmt.Errorf("getting last event: %w", err)
 	}
@@ -99,14 +115,24 @@ func (p *EventProcessor) persistEvent(event *models.Event) error {
 		if err := assert.Check(lastHash != "", "prev_hash must be non-empty: seq=%d", event.SeqIndex); err != nil {
 			return err
 		}
-		// STRICT SEQUENCING ASSERTION
 		if err := assert.Check(event.SeqIndex == lastIndex+1, "sequence gap detected: prev=%d, curr=%d", lastIndex, event.SeqIndex); err != nil {
 			return err
 		}
 		event.PrevHash = lastHash
 	}
 
-	// 3. Hash and Sign
+	return nil
+}
+
+// hashAndSignEvent calculates the hash and signature for the event
+func (p *EventProcessor) hashAndSignEvent(event *models.Event) error {
+	if err := assert.Check(event != nil, "event must not be nil"); err != nil {
+		return err
+	}
+	if err := assert.Check(event.PrevHash != "", "prev_hash must be set"); err != nil {
+		return err
+	}
+
 	payload := map[string]interface{}{
 		"id":         event.ID,
 		"run_id":     event.RunID,
@@ -136,8 +162,7 @@ func (p *EventProcessor) persistEvent(event *models.Event) error {
 	}
 	event.Signature = signature
 
-	// 4. Store
-	return p.db.StoreEvent(event)
+	return nil
 }
 
 func (p *EventProcessor) createTaskCompletionEvent(taskID string, state string) {

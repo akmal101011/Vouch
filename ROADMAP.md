@@ -66,7 +66,7 @@ Focus: reliability, observability, and evidence integrity for early adopters.
   - Prometheus exposes latency and queue depth metrics
 
 7) Structured logging
-- Status: Planned
+- Status: Done
 - Scope: correlation IDs per request/task, log levels
 - Acceptance:
   - Logs include request_id and task_id when available
