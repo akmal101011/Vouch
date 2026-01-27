@@ -8,19 +8,8 @@ Status legend:
 
 ---
 
-## v0.1.0 milestone (proposed)
+## v0.1.0
 
-Focus: reliability, observability, and evidence integrity for early adopters.
-
-- Graceful shutdown (item 5)
-- Metrics expansion (item 6)
-- Structured logging with request/task correlation (item 7)
-- Health and readiness probes (item 8)
-- Policy test harness (item 20)
-- Evidence bag signing (item 11)
-- CI quality gates (item 25)
-
----
 
 ## Foundation and MVP hardening
 
@@ -89,11 +78,15 @@ Focus: reliability, observability, and evidence integrity for early adopters.
 ## Security and trust
 
 10) Key management workflow
-- Status: Planned
+- Status: Done
 - Scope: rotate, backup, restore, document handling
 - Acceptance:
   - Rotation does not break chain verification
   - Restore workflow is documented and tested
+  - CLI commands: backup-key, restore-key, list-backups
+  - KEY_MANAGEMENT.md guide with security best practices
+  - CLI commands: backup-key, restore-key, list-backups
+  - Comprehensive KEY_MANAGEMENT.md documentation
 
 11) Evidence bag signing
 - Status: Planned
@@ -190,16 +183,18 @@ Focus: reliability, observability, and evidence integrity for early adopters.
 ## Platform and release engineering
 
 24) Release artifacts and checksums
-- Status: Planned
-- Scope: signed checksums for releases
+- Status: Done
+- Scope: signed checksums for releases, SBOM generation
 - Acceptance:
   - Release includes checksums and verification steps
+  - GoReleaser generates SHA256 checksums and SPDX SBOM
 
 25) CI quality gates
-- Status: Planned
-- Scope: lint, static analysis, tests, coverage
+- Status: Done
+- Scope: lint, static analysis, tests, coverage, race detector
 - Acceptance:
   - CI fails on new warnings or lint errors
+  - 5 parallel jobs: tests, safety checks, lint, build validation, integration
 
 26) Security scanning
 - Status: Backlog
