@@ -6,35 +6,147 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    name: Test
+    name: Test Suite
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-        check-latest: true
-    - run: go mod download
-    - name: Build Proxy
-      run: go build -v -o vouch-proxy .
-    - name: Build CLI
-      run: go build -v -o vouch-cli ./cmd/vouch-cli
-    - name: Run All Tests
-      run: go test -v ./...
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests with race detector
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 7
+
+  safety:
+    name: Safety Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run staticcheck
+        run: staticcheck ./...
+
+      - name: Run safety check script
+        run: ./scripts/safety-check.sh
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
           args: --out-format=colored-line-number --timeout=5m
           only-new-issues: false
+
+  build:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build vouch
+        run: |
+          go build -v -o vouch main.go
+          chmod +x vouch
+
+      - name: Build vouch-cli
+        run: |
+          go build -v -o vouch-cli cmd/vouch-cli/main.go
+          chmod +x vouch-cli
+
+      - name: Verify binaries
+        run: |
+          ./vouch -h || true
+          ./vouch-cli --help || true
+          file vouch
+          file vouch-cli
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            vouch
+            vouch-cli
+          retention-days: 7
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run integration tests
+        run: go test -v ./tests/integration_test.go -timeout=5m
+
+      - name: Run tamper tests
+        run: go test -v ./tests/tamper_test.go -timeout=2m
+
+      - name: Run benchmark tests
+        run: go test -v -bench=. -benchmem ./tests/benchmark_test.go -timeout=10m
